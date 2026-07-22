@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCoin, getKlines } from "@/lib/api";
-import { AreaChart, CandleChart } from "@/components/charts";
+import { getCoin, getKlines } from "../../../lib/api";
+import { AreaChart, CandleChart } from "../../../components/charts";
 import { Delta, SourceTag } from "@/components/ui";
 import { fmtNum, fmtUsd } from "@/lib/format";
 import { FIXTURE_ARTICLES } from "@/lib/fixtures";

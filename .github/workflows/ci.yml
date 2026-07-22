@@ -58,13 +58,16 @@ jobs:
             lib/api.ts \
             components/ui.tsx \
             components/charts.tsx
-      - run: npm ci
+      - name: Hostinger-compatible clean install
+        run: npm install
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
         env:
+          NODE_ENV: production
           NEXT_PUBLIC_SITE_URL: https://aioncrypto.cloud
           NEXT_PUBLIC_ENABLE_INDEXING: "false"
+          NEXT_PUBLIC_BACKEND_URL: https://aion-crypto-api.onrender.com
 
   security:
     runs-on: ubuntu-latest

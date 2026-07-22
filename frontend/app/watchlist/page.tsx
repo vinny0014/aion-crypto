@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { FIXTURE_TABLE } from "@/lib/fixtures";
-import { fmtUsd } from "@/lib/format";
-import { Delta } from "@/components/ui";
+import { FIXTURE_TABLE } from "../../lib/fixtures";
+import { fmtUsd } from "../../lib/format";
+import { Delta } from "../../components/ui";
 
 const KEY = "aion-crypto-watchlist";
 
