@@ -3,9 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCoin, getKlines } from "../../../lib/api";
 import { AreaChart, CandleChart } from "../../../components/charts";
-import { Delta, SourceTag } from "@/components/ui";
-import { fmtNum, fmtUsd } from "@/lib/format";
-import { FIXTURE_ARTICLES } from "@/lib/fixtures";
+import { Delta, SourceTag } from "../../../components/ui";
+import { fmtNum, fmtUsd } from "../../../lib/format";
+import { FIXTURE_ARTICLES } from "../../../lib/fixtures";
 
 export const revalidate = 60;
 

@@ -19,6 +19,23 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - name: Reject frontend path aliases
+        shell: bash
+        run: |
+          set +e
+          matches=$(rg -n "from ['\"]@/|import\\(['\"]@/|import ['\"]@/|require\\(['\"]@/|export .* from ['\"]@/" frontend 2>&1)
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            printf '%s\n' "$matches"
+            echo "Frontend @/ imports are forbidden. Use relative paths."
+            exit 1
+          fi
+          if [ "$status" -ne 1 ]; then
+            printf '%s\n' "$matches"
+            exit "$status"
+          fi
+          echo "No frontend @/ imports found."
       - run: python scripts/validate_project.py
 
   backend:

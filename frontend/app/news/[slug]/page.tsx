@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FIXTURE_ARTICLES } from "@/lib/fixtures";
+import { FIXTURE_ARTICLES } from "../../../lib/fixtures";
 
 type Props = { params: Promise<{ slug: string }> };
 

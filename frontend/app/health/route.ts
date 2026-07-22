@@ -1,4 +1,4 @@
-import { APP_NAME, INDEXING_ENABLED } from "@/lib/site";
+import { APP_NAME, INDEXING_ENABLED } from "../../lib/site";
 
 export const dynamic = "force-dynamic";
 

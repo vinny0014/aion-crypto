@@ -47,19 +47,9 @@ def main() -> None:
         if not (ROOT / module).is_file():
             fail(f"missing frontend module: {module}")
 
-    hostinger_critical_aliases = {
-        "frontend/app/watchlist/page.tsx": (
-            "@/lib/fixtures",
-            "@/lib/format",
-            "@/components/ui",
-        ),
-        "frontend/app/crypto/[symbol]/page.tsx": (
-            "@/lib/api",
-            "@/components/charts",
-        ),
-    }
     alias_pattern = re.compile(
-        r"(?:from\s+|import\s*\(\s*|require\s*\(\s*)[\"']@/([^\"']+)[\"']"
+        r"(?:\bfrom\s+|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)"
+        r"[\"'](@/[^\"']+)[\"']"
     )
     alias_imports: list[tuple[Path, str]] = []
     frontend_sources = (ROOT / "frontend/app", ROOT / "frontend/components", ROOT / "frontend/lib")
@@ -68,22 +58,14 @@ def main() -> None:
             if path.suffix not in {".ts", ".tsx", ".js", ".jsx", ".mjs"}:
                 continue
             source = path.read_text(encoding="utf-8")
-            relative_path = path.relative_to(ROOT).as_posix()
-            for forbidden_alias in hostinger_critical_aliases.get(relative_path, ()):
-                if forbidden_alias in source:
-                    fail(f"Hostinger-critical alias remains in {relative_path}: {forbidden_alias}")
             alias_imports.extend((path, match) for match in alias_pattern.findall(source))
 
-    extensions = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
-    for source_path, alias_target in alias_imports:
-        target = ROOT / "frontend" / alias_target
-        candidates = [target.with_suffix(extension) for extension in extensions]
-        candidates.extend(target / f"index{extension}" for extension in extensions)
-        if not any(candidate.is_file() for candidate in candidates):
-            fail(
-                f"unresolved @/ import in {source_path.relative_to(ROOT)}: "
-                f"@/{alias_target}"
-            )
+    if alias_imports:
+        details = ", ".join(
+            f"{source_path.relative_to(ROOT)}: {alias_target}"
+            for source_path, alias_target in alias_imports
+        )
+        fail(f"frontend path aliases are forbidden: {details}")
 
     active_paths = [ROOT / "frontend/app", ROOT / "frontend/components", ROOT / "frontend/lib", ROOT / "backend/app"]
     forbidden = ("wordbet", "aion-news", "aionnews")
@@ -112,10 +94,7 @@ def main() -> None:
     if generated:
         fail(f"generated artifacts are tracked: {', '.join(generated)}")
 
-    print(
-        "production configuration, repository hygiene and frontend imports: "
-        f"ok ({len(alias_imports)} remaining @/ imports resolved)"
-    )
+    print("production configuration, repository hygiene and frontend imports: ok (0 @/ imports)")
 
 
 if __name__ == "__main__":

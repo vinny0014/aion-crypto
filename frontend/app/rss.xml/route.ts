@@ -1,4 +1,4 @@
-import { SITE_URL, APP_NAME, TAGLINE } from "@/lib/site";
+import { SITE_URL, APP_NAME, TAGLINE } from "../../lib/site";
 
 export const dynamic = "force-static";
 

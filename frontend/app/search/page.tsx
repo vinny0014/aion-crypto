@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FIXTURE_ARTICLES, FIXTURE_TABLE } from "@/lib/fixtures";
+import { FIXTURE_ARTICLES, FIXTURE_TABLE } from "../../lib/fixtures";
 
 export const metadata: Metadata = { title: "Search", alternates: { canonical: "/search" } };
 

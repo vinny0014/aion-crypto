@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { Provenance } from "@/lib/api";
-import { fmtPct, timeAgo } from "@/lib/format";
+import type { Provenance } from "../lib/api";
+import { fmtPct, timeAgo } from "../lib/format";
 
 export function Delta({ value, className = "" }: { value: number | null | undefined; className?: string }) {
   if (value == null) return <span className={`text-ink-dim ${className}`}>—</span>;

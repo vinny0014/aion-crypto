@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FIXTURE_ARTICLES } from "@/lib/fixtures";
+import { FIXTURE_ARTICLES } from "../../lib/fixtures";
 
 export const metadata: Metadata = {
   title: "News",

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import type { GlobalMetrics, Kline, TickerCoin, Wrapped } from "@/lib/api";
-import { FIXTURE_ARTICLES, FIXTURE_INSIGHT } from "@/lib/fixtures";
-import { fmtNum, fmtPct, fmtUsd } from "@/lib/format";
+import type { GlobalMetrics, Kline, TickerCoin, Wrapped } from "../lib/api";
+import { FIXTURE_ARTICLES, FIXTURE_INSIGHT } from "../lib/fixtures";
+import { fmtNum, fmtPct, fmtUsd } from "../lib/format";
 import { AreaChart, Donut, FearGreedGauge, Sparkline } from "./charts";
 import { CoinDot, Delta, SectionTitle, SourceTag, Unavailable } from "./ui";
 

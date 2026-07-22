@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import { APP_NAME, INDEXING_ENABLED, TAGLINE, SITE_URL } from "@/lib/site";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+import { APP_NAME, INDEXING_ENABLED, TAGLINE, SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
