@@ -75,6 +75,14 @@ jobs:
             lib/api.ts \
             components/ui.tsx \
             components/charts.tsx
+      - name: Regression: production CSS build dependencies
+        run: |
+          NODE_ENV=production npm install
+          node -e "for (const pkg of ['tailwindcss', 'postcss', 'autoprefixer']) require.resolve(pkg)"
+          npm run build
+          npm install --omit=dev
+          node -e "for (const pkg of ['tailwindcss', 'postcss', 'autoprefixer']) require.resolve(pkg)"
+          npm run build
       - name: Hostinger-compatible clean install
         run: npm install
       - run: npm run lint
