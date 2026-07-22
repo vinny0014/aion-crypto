@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "News",
   description: "Crypto market news and coverage from AION Crypto.",
   alternates: { canonical: "/news" },
+  robots: { index: false, follow: false },
 };
 
 export default function NewsPage() {

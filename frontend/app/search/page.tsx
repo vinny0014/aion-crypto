@@ -4,8 +4,9 @@ import { FIXTURE_ARTICLES, FIXTURE_TABLE } from "@/lib/fixtures";
 
 export const metadata: Metadata = { title: "Search", alternates: { canonical: "/search" } };
 
-export default function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
-  const q = (searchParams.q ?? "").trim().toLowerCase();
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q: rawQuery } = await searchParams;
+  const q = (rawQuery ?? "").trim().toLowerCase();
   const coins = q ? FIXTURE_TABLE.filter((c) => c.symbol.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)) : [];
   const articles = q ? FIXTURE_ARTICLES.filter((a) => (a.title + a.summary + a.tag).toLowerCase().includes(q)) : [];
   return (

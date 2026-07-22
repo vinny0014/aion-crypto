@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
 
 export default function LoginPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "ok">("idle");
@@ -12,6 +12,11 @@ export default function LoginPage() {
     e.preventDefault();
     setStatus("loading");
     const form = new FormData(e.currentTarget);
+    if (!BACKEND) {
+      setStatus("error");
+      setMessage("Sign-in is not connected in this preview environment.");
+      return;
+    }
     try {
       const res = await fetch(`${BACKEND}/api/v1/auth/login`, {
         method: "POST",

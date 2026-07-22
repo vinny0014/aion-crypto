@@ -6,8 +6,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/newsletter" },
 };
 
-export default function NewsletterPage({ searchParams }: { searchParams: { email?: string } }) {
-  const email = searchParams.email;
+export default async function NewsletterPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
+  const { email } = await searchParams;
   return (
     <div className="mx-auto max-w-xl py-8">
       <h1 className="font-display text-2xl font-bold">AION Crypto Weekly</h1>

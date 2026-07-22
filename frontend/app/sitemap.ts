@@ -1,5 +1,4 @@
 import type { MetadataRoute } from "next";
-import { FIXTURE_ARTICLES } from "@/lib/fixtures";
 import { SITE_URL } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -12,6 +11,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     ...staticPaths.map((p) => ({ url: `${SITE_URL}${p}`, changeFrequency: "hourly" as const })),
     ...coins.map((s) => ({ url: `${SITE_URL}/crypto/${s}`, changeFrequency: "hourly" as const })),
-    ...FIXTURE_ARTICLES.map((a) => ({ url: `${SITE_URL}/news/${a.slug}`, changeFrequency: "daily" as const })),
   ];
 }

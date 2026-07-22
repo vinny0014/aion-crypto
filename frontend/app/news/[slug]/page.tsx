@@ -3,20 +3,27 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FIXTURE_ARTICLES } from "@/lib/fixtures";
 
-type Props = { params: { slug: string } };
+type Props = { params: Promise<{ slug: string }> };
 
 export function generateStaticParams() {
   return FIXTURE_ARTICLES.map((a) => ({ slug: a.slug }));
 }
 
-export function generateMetadata({ params }: Props): Metadata {
-  const a = FIXTURE_ARTICLES.find((x) => x.slug === params.slug);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const a = FIXTURE_ARTICLES.find((x) => x.slug === slug);
   if (!a) return {};
-  return { title: a.title, description: a.summary, alternates: { canonical: `/news/${a.slug}` } };
+  return {
+    title: a.title,
+    description: a.summary,
+    alternates: { canonical: `/news/${a.slug}` },
+    robots: { index: false, follow: false },
+  };
 }
 
-export default function ArticlePage({ params }: Props) {
-  const a = FIXTURE_ARTICLES.find((x) => x.slug === params.slug);
+export default async function ArticlePage({ params }: Props) {
+  const { slug } = await params;
+  const a = FIXTURE_ARTICLES.find((x) => x.slug === slug);
   if (!a) notFound();
   const jsonLd = {
     "@context": "https://schema.org",

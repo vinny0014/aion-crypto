@@ -9,10 +9,11 @@ import { FIXTURE_ARTICLES } from "@/lib/fixtures";
 
 export const revalidate = 60;
 
-type Props = { params: { symbol: string } };
+type Props = { params: Promise<{ symbol: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const sym = params.symbol.toUpperCase();
+  const { symbol } = await params;
+  const sym = symbol.toUpperCase();
   return {
     title: `${sym} Price, Chart & Market Data`,
     description: `Live ${sym} price, 24h change, volume, market cap and charts on AION Crypto.`,
@@ -21,7 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CoinPage({ params }: Props) {
-  const sym = params.symbol.toUpperCase();
+  const { symbol } = await params;
+  const sym = symbol.toUpperCase();
   const [coin, klines] = await Promise.all([getCoin(sym), getKlines(sym, "1h", 168)]);
   if (coin.status === "not_found") notFound();
   const d = coin.data!;

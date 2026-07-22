@@ -9,7 +9,7 @@ import {
   FIXTURE_TICKER,
 } from "./fixtures";
 
-const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
+const BACKEND = process.env.BACKEND_URL?.replace(/\/$/, "");
 
 export type Provenance = {
   source: string | null;
@@ -21,6 +21,7 @@ export type Provenance = {
 export type Wrapped<T> = Provenance & { data: T | null };
 
 async function backendGet<T>(path: string): Promise<Wrapped<T> | null> {
+  if (!BACKEND) return null;
   try {
     const res = await fetch(`${BACKEND}${path}`, { next: { revalidate: 60 } });
     if (!res.ok) return null;

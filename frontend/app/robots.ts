@@ -1,7 +1,13 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/site";
+import { INDEXING_ENABLED, SITE_URL } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
+  if (!INDEXING_ENABLED) {
+    return {
+      rules: [{ userAgent: "*", disallow: "/" }],
+      host: SITE_URL,
+    };
+  }
   return {
     rules: [{ userAgent: "*", allow: "/", disallow: ["/admin", "/login"] }],
     sitemap: [

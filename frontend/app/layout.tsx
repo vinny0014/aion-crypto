@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { APP_NAME, TAGLINE, SITE_URL } from "@/lib/site";
+import { APP_NAME, INDEXING_ENABLED, TAGLINE, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     title: `${APP_NAME} — ${TAGLINE}`,
     description: "Real-time crypto market data, charts, news and analysis.",
   },
-  robots: { index: true, follow: true },
+  robots: { index: INDEXING_ENABLED, follow: INDEXING_ENABLED },
 };
 
 const orgJsonLd = {
