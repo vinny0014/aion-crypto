@@ -35,6 +35,17 @@ def main() -> None:
         if needle not in body:
             fail(f"missing production contract: {needle}")
 
+    required_frontend_modules = (
+        "frontend/lib/fixtures.ts",
+        "frontend/lib/format.ts",
+        "frontend/lib/api.ts",
+        "frontend/components/ui.tsx",
+        "frontend/components/charts.tsx",
+    )
+    for module in required_frontend_modules:
+        if not (ROOT / module).is_file():
+            fail(f"missing frontend module: {module}")
+
     active_paths = [ROOT / "frontend/app", ROOT / "frontend/components", ROOT / "frontend/lib", ROOT / "backend/app"]
     forbidden = ("wordbet", "aion-news", "aionnews")
     for directory in active_paths:
@@ -49,6 +60,10 @@ def main() -> None:
     tracked = subprocess.run(
         ["git", "ls-files"], cwd=ROOT, check=True, capture_output=True, text=True
     ).stdout.splitlines()
+    untracked_modules = [module for module in required_frontend_modules if module not in tracked]
+    if untracked_modules:
+        fail(f"frontend modules are not tracked: {', '.join(untracked_modules)}")
+
     generated = [
         path for path in tracked
         if path.endswith((".db", ".sqlite", ".sqlite3", ".tsbuildinfo", ".pyc", ".zip"))

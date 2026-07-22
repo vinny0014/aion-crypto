@@ -42,8 +42,22 @@ jobs:
     defaults: { run: { working-directory: frontend } }
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 1
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - name: Verify clean checkout module graph
+        run: |
+          test ! -d node_modules
+          test ! -d .next
+          git ls-files --error-unmatch -- \
+            lib/fixtures.ts \
+            lib/format.ts \
+            lib/api.ts \
+            components/ui.tsx \
+            components/charts.tsx
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
@@ -77,6 +91,10 @@ jobs:
     defaults: { run: { working-directory: frontend } }
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 1
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: npm ci
