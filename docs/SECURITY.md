@@ -10,4 +10,4 @@ Implemented now:
 Before production (tracked in WORK_HANDOFF.md):
 - Rate limiting on `/auth/login` (brute-force) and public API; CSP header tuned to final asset origins; automated DB backups + restore drill; password recovery flow; audit logging for admin actions.
 
-Report vulnerabilities privately to security@aioncrypto.example — never via public issues.
+Report vulnerabilities privately to security@aioncrypto.cloud — never via public issues.

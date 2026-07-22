@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Corrections Policy",
-  description: "Anyone can flag an error via editorial@aioncrypto.example. Include the article link and the issue.",
+  description: "Anyone can flag an error via editorial@aioncrypto.cloud. Include the article link and the issue.",
   alternates: { canonical: "/corrections-policy" },
 };
 
@@ -12,7 +12,7 @@ export default function Page() {
       <h1 className="font-display text-2xl font-bold">Corrections Policy</h1>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">Reporting an error</h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Anyone can flag an error via editorial@aioncrypto.example. Include the article link and the issue.</p>
+        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Anyone can flag an error via editorial@aioncrypto.cloud. Include the article link and the issue.</p>
       </section>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">How we correct</h2>

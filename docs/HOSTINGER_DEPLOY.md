@@ -3,7 +3,7 @@
 ## Frontend (Next.js)
 1. Create a Node.js application (Node 22) in hPanel; set root to `frontend/`.
 2. Build command: `npm ci && npm run build`. Start command: `npm run start -- -p $PORT`.
-3. Env vars: `NEXT_PUBLIC_SITE_URL=https://your-domain`, `BACKEND_URL=https://api.your-domain`, `NEXT_PUBLIC_BACKEND_URL=https://api.your-domain`.
+3. Env vars: `NEXT_PUBLIC_SITE_URL=https://aioncrypto.cloud`, `BACKEND_URL=https://api.aioncrypto.cloud` (or the backend URL you provision), `NEXT_PUBLIC_BACKEND_URL` matching it.
 4. Attach the domain and enable SSL.
 
 ## Backend (FastAPI)
@@ -16,3 +16,5 @@ Supabase free project → copy the pooled connection string into `DATABASE_URL` 
 
 ## Cost expectation (initial phase)
 Hostinger promo plan + Supabase $0 + Binance/CoinGecko public $0 + GA4 $0 + monitoring $0 + paid text/image APIs ≤ US$10/mo → roughly R$40–65/mo. Do not add paid services without explicit authorization.
+
+> Official domain: **https://aioncrypto.cloud** (deploy target: Hostinger). Do not change DNS or publish until explicitly instructed; this document only prepares the configuration.

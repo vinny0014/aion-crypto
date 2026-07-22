@@ -44,3 +44,7 @@ The sandbox cannot reach Binance/CoinGecko, so live-data paths return honest `un
 
 ## Environment variables
 See docs/ENVIRONMENT_VARIABLES.md. Production musts: strong JWT_SECRET, Supabase DATABASE_URL, real domain URLs.
+
+## Official domain update (2026-07-22)
+
+The project's single official production domain is **https://aioncrypto.cloud**, applied to canonical, Open Graph, Twitter Cards, Schema.org (Organization + WebSite/SearchAction), sitemap.xml, news-sitemap.xml, image-sitemap.xml, robots.txt (with Host + 3 sitemap entries) and RSS (/rss.xml). Central config: `frontend/lib/site.ts` (APP_NAME "AION Crypto", APP_SHORT_NAME "AIONCRYPTO", TAGLINE "Crypto Market Intelligence", REPOSITORY vinny0014/aion-crypto, DEPLOY_TARGET Hostinger). Dev/preview environments override via `NEXT_PUBLIC_SITE_URL`; production builds default to the official domain — no localhost, no Vercel URL, no other project's subdomain is ever emitted in production output. Contact emails now use @aioncrypto.cloud. DNS was NOT changed and nothing was published — this is configuration only.

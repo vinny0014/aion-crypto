@@ -24,7 +24,7 @@ export default function Page() {
       </section>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">Your rights</h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">You may request access to or deletion of your data at any time via privacy@aioncrypto.example.</p>
+        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">You may request access to or deletion of your data at any time via privacy@aioncrypto.cloud.</p>
       </section>
     </div>
   );

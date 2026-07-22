@@ -1,5 +1,19 @@
 # AION Crypto
 
+**Official project configuration**
+
+| Key | Value |
+| --- | --- |
+| APP_NAME | AION Crypto |
+| APP_SHORT_NAME | AIONCRYPTO |
+| TAGLINE | Crypto Market Intelligence |
+| Official domain | https://aioncrypto.cloud |
+| Repository | vinny0014/aion-crypto |
+| Deploy target | Hostinger |
+
+The production canonical domain is `https://aioncrypto.cloud` — applied to canonical tags, Open Graph, Twitter Cards, Schema.org, sitemap.xml, news-sitemap.xml, image-sitemap.xml, robots.txt and RSS. Development/preview environments use `NEXT_PUBLIC_SITE_URL`.
+
+
 **Crypto Market Intelligence** — a professional crypto market portal: real-time market data, charts, news, analysis, guides, watchlist and an admin/automation foundation. Fully independent from AION News (separate repo, database, hosting, secrets and operations).
 
 ## Monorepo layout

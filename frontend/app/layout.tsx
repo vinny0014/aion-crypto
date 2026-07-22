@@ -2,30 +2,48 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+import { APP_NAME, TAGLINE, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE),
-  title: { default: "AION Crypto — Crypto Market Intelligence", template: "%s · AION Crypto" },
+  metadataBase: new URL(SITE_URL),
+  title: { default: `${APP_NAME} — ${TAGLINE}`, template: `%s · ${APP_NAME}` },
   description:
     "Real-time crypto market data, charts, news and analysis. AION Crypto is a crypto market intelligence portal — prices, insights and research in one place.",
+  alternates: { canonical: "/" },
   openGraph: {
-    siteName: "AION Crypto",
+    siteName: APP_NAME,
     type: "website",
-    title: "AION Crypto — Crypto Market Intelligence",
+    url: SITE_URL,
+    locale: "en_US",
+    title: `${APP_NAME} — ${TAGLINE}`,
     description: "Real-time crypto market data, charts, news and analysis.",
   },
-  twitter: { card: "summary_large_image" },
+  twitter: {
+    card: "summary_large_image",
+    title: `${APP_NAME} — ${TAGLINE}`,
+    description: "Real-time crypto market data, charts, news and analysis.",
+  },
   robots: { index: true, follow: true },
 };
 
 const orgJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "AION Crypto",
-  url: SITE,
-  slogan: "Crypto Market Intelligence",
+  name: APP_NAME,
+  url: SITE_URL,
+  slogan: TAGLINE,
+};
+
+const siteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: APP_NAME,
+  url: SITE_URL,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${SITE_URL}/search?q={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -33,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen font-sans">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
         <Header />
         <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-5">{children}</main>
         <Footer />

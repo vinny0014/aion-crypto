@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 import { FIXTURE_ARTICLES } from "@/lib/fixtures";
-
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+import { SITE_URL } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
@@ -11,8 +10,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
   const coins = ["BTC", "ETH", "SOL", "XRP", "BNB", "ADA", "DOGE", "LINK"];
   return [
-    ...staticPaths.map((p) => ({ url: `${SITE}${p}`, changeFrequency: "hourly" as const })),
-    ...coins.map((s) => ({ url: `${SITE}/crypto/${s}`, changeFrequency: "hourly" as const })),
-    ...FIXTURE_ARTICLES.map((a) => ({ url: `${SITE}/news/${a.slug}`, changeFrequency: "daily" as const })),
+    ...staticPaths.map((p) => ({ url: `${SITE_URL}${p}`, changeFrequency: "hourly" as const })),
+    ...coins.map((s) => ({ url: `${SITE_URL}/crypto/${s}`, changeFrequency: "hourly" as const })),
+    ...FIXTURE_ARTICLES.map((a) => ({ url: `${SITE_URL}/news/${a.slug}`, changeFrequency: "daily" as const })),
   ];
 }
