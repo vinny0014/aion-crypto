@@ -26,3 +26,14 @@ export const CONTACT_EMAILS = {
   security: "security@aioncrypto.cloud",
   privacy: "privacy@aioncrypto.cloud",
 } as const;
+
+// ── Language policy ──
+// The product ships 100% in English in this phase. i18n is prepared via this
+// single locale registry: to add a language later, extend SUPPORTED_LOCALES and
+// introduce per-locale message catalogs. Only "en" is active now.
+export const DEFAULT_LANGUAGE = "en";
+export const CONTENT_LANGUAGE = "en";
+export const UI_LANGUAGE = "en";
+export const SEO_LANGUAGE = "en";
+export const ADMIN_LANGUAGE = "en";
+export const SUPPORTED_LOCALES = ["en"] as const;

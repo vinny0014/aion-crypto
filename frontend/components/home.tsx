@@ -336,3 +336,53 @@ export function NewsletterBand() {
     </section>
   );
 }
+
+// ── 8. BTC & ETH snapshots + watchlist entry (daily-use anchors) ──
+function SnapshotCard({ c, name, wrap }: { c?: TickerCoin; name: string; wrap: Wrapped<TickerCoin[]> }) {
+  if (!c) return <div className="card p-4"><Unavailable what={`${name} snapshot`} /></div>;
+  const up = c.change_24h_pct >= 0;
+  return (
+    <Link href={`/crypto/${c.symbol}`} className="card group p-4 transition-colors hover:border-primary/40">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CoinDot symbol={c.symbol} />
+          <div>
+            <div className="text-[14px] font-bold group-hover:text-primary-glow">{name} Overview</div>
+            <div className="text-[11px] text-ink-dim">{c.symbol} / USD · updated continuously</div>
+          </div>
+        </div>
+        <Delta value={c.change_24h_pct} />
+      </div>
+      <div className="num mt-3 text-[22px] font-bold">{fmtUsd(c.price)}</div>
+      <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-ink-dim">
+        <div><div className="uppercase tracking-wide">24h High</div><div className={`num text-[12px] ${up ? "text-accent-green" : "text-ink"}`}>{fmtUsd(c.high_24h)}</div></div>
+        <div><div className="uppercase tracking-wide">24h Low</div><div className="num text-[12px] text-ink">{fmtUsd(c.low_24h)}</div></div>
+        <div><div className="uppercase tracking-wide">24h Volume</div><div className="num text-[12px] text-ink">{fmtUsd(c.volume_24h_quote)}</div></div>
+      </div>
+      <div className="mt-2 flex justify-end"><SourceTag p={wrap} /></div>
+    </Link>
+  );
+}
+
+export function SnapshotsRow({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
+  const coins = ticker.data ?? [];
+  const btc = coins.find((c) => c.symbol === "BTC");
+  const eth = coins.find((c) => c.symbol === "ETH");
+  return (
+    <section className="mt-4 grid gap-4 lg:grid-cols-3">
+      <SnapshotCard c={btc} name="Bitcoin" wrap={ticker} />
+      <SnapshotCard c={eth} name="Ethereum" wrap={ticker} />
+      <div className="card flex flex-col justify-between p-4">
+        <div>
+          <div className="text-[14px] font-bold">Your Watchlist</div>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-ink-dim">
+            Track the coins you care about and check back throughout the day. Your list is saved on this device — alerts are on the roadmap.
+          </p>
+        </div>
+        <Link href="/watchlist" className="mt-3 inline-flex w-fit items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-glow">
+          Open Watchlist
+        </Link>
+      </div>
+    </section>
+  );
+}
