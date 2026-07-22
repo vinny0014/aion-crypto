@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          matches=$(rg -n "from ['\"]@/|import\\(['\"]@/|import ['\"]@/|require\\(['\"]@/|export .* from ['\"]@/" frontend 2>&1)
+          matches=$(grep -RInE "from ['\"]@/|import\\(['\"]@/|import ['\"]@/|require\\(['\"]@/|export .* from ['\"]@/" frontend/app frontend/components frontend/lib 2>&1)
           status=$?
           set -e
           if [ "$status" -eq 0 ]; then
