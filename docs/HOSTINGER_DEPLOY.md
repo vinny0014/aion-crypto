@@ -1,20 +1,20 @@
-# Hostinger Deploy
+# Hostinger deploy summary
 
-## Frontend (Next.js)
-1. Create a Node.js application (Node 22) in hPanel; set root to `frontend/`.
-2. Build command: `npm ci && npm run build`. Start command: `npm run start -- -p $PORT`.
-3. Env vars: `NEXT_PUBLIC_SITE_URL=https://aioncrypto.cloud`, `BACKEND_URL=https://api.aioncrypto.cloud` (or the backend URL you provision), `NEXT_PUBLIC_BACKEND_URL` matching it.
-4. Attach the domain and enable SSL.
+The authoritative, preview-first runbook is [`../HOSTINGER_DEPLOY_PLAN.md`](../HOSTINGER_DEPLOY_PLAN.md).
 
-## Backend (FastAPI)
-Hostinger shared Node hosting does not run Python; use one of:
-- **Hostinger VPS** (recommended): `python3.12 -m venv`, `pip install -r requirements.txt`, run `uvicorn app.main:app --host 127.0.0.1 --port 8000` under systemd, reverse-proxy `api.your-domain` → 8000 with Nginx/LiteSpeed, SSL via certbot.
-- Or any small compatible Python host — keeping it separate from any AION News infrastructure.
+Frontend contract:
 
-## Database
-Supabase free project → copy the pooled connection string into `DATABASE_URL` (`postgresql+psycopg://`). Add `psycopg[binary]` to requirements when switching.
+- Hostinger Node.js Web App, project root `frontend/`, Node 22.
+- Install/build: `npm ci && npm run build`.
+- Start: `npm run start` (`PORT` is read by the standalone Next.js server).
+- Health: `GET /health`.
+- Preview keeps `NEXT_PUBLIC_ENABLE_INDEXING=false`, uses Hostinger's temporary domain, and does not attach `aioncrypto.cloud`.
 
-## Cost expectation (initial phase)
-Hostinger promo plan + Supabase $0 + Binance/CoinGecko public $0 + GA4 $0 + monitoring $0 + paid text/image APIs ≤ US$10/mo → roughly R$40–65/mo. Do not add paid services without explicit authorization.
+Backend contract:
 
-> Official domain: **https://aioncrypto.cloud** (deploy target: Hostinger). Do not change DNS or publish until explicitly instructed; this document only prepares the configuration.
+- Separate Render Python web service from `render.yaml`.
+- Alembic migration runs before deployment; readiness is `GET /health/ready`.
+- Supabase PostgreSQL remains a separate managed service.
+- No scheduler or agent worker may be provisioned until a real runnable entrypoint and handler set exist.
+
+The official domain and DNS must remain unchanged until every approval gate in the root deploy plan is satisfied.

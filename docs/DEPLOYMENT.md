@@ -8,7 +8,7 @@ Target architecture (no Vercel; independent from AION News):
 
 Checklist before go-live:
 1. Set all production env vars (see ENVIRONMENT_VARIABLES.md); generate a strong `JWT_SECRET`.
-2. Point `DATABASE_URL` at Supabase; run schema creation (Alembic migration baseline — pending, see handoff).
+2. Point `DATABASE_URL` at Supabase; run `alembic -c alembic.ini upgrade head` from `backend/`.
 3. Seed admin via `scripts/seed_admin.py` on the server.
 4. Configure domain + SSL; verify `/health` and homepage provenance badges show `live`.
 5. Register sitemap in Google Search Console and Bing Webmaster.
