@@ -29,6 +29,10 @@ def test_health(client):
     body = r.json()
     assert body["status"] == "ok"
     assert body["database"] == "ok"
+    assert client.get("/health/live").status_code == 200
+    ready = client.get("/health/ready")
+    assert ready.status_code == 200
+    assert ready.json()["status"] == "ready"
 
 
 def test_login_flow_and_role_protection(client):
@@ -55,6 +59,10 @@ def test_login_flow_and_role_protection(client):
     cost = client.get("/api/v1/cost/summary", headers={"Authorization": f"Bearer {tokens['access_token']}"})
     assert cost.status_code == 200
     assert cost.json()["band"] == "NORMAL"
+
+    overview = client.get("/api/v1/admin/overview", headers={"Authorization": f"Bearer {tokens['access_token']}"})
+    assert overview.status_code == 200
+    assert overview.json()["agents"]["status"] == "not_connected"
 
     anon = client.get("/api/v1/cost/summary")
     assert anon.status_code == 401

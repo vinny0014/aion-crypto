@@ -12,12 +12,14 @@ was used, so the frontend can always display provenance and freshness.
 """
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any, Optional
 
 import httpx
 
 from app.cache import LastValidStore, TTLCache
+from app.circuit_breaker import CircuitBreaker
 from app.config import get_settings
 
 # Static coin registry: symbol -> metadata. Prices always come from APIs;
@@ -46,6 +48,8 @@ COIN_REGISTRY: dict[str, dict[str, str]] = {
     "UNI": {"name": "Uniswap", "gecko_id": "uniswap", "category": "DeFi"},
 }
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_TICKER_SYMBOLS = ["BTC", "ETH", "XRP", "SOL", "BNB", "DOGE", "ADA", "LINK"]
 
 
@@ -61,6 +65,7 @@ class MarketService:
         self.cache = cache or TTLCache()
         self.last_valid = last_valid or LastValidStore(s.last_valid_store_path)
         self._client = client
+        self.breakers: dict[str, CircuitBreaker] = {}
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -99,13 +104,29 @@ class MarketService:
             return cached
 
         for source_name, fetcher in fetchers:
+            breaker = self.breakers.setdefault(
+                source_name,
+                CircuitBreaker(
+                    self.settings.circuit_breaker_failure_threshold,
+                    self.settings.circuit_breaker_recovery_seconds,
+                ),
+            )
+            if not breaker.allow_request():
+                logger.warning("market provider circuit open", extra={"provider": source_name, "cache_key": key})
+                continue
             try:
                 data = await fetcher()
+                breaker.record_success()
                 wrapped = self._wrap(data, source=source_name)
                 self.cache.set(key, wrapped, self.settings.market_cache_ttl_seconds)
                 self.last_valid.save(key, wrapped)
                 return wrapped
-            except Exception:
+            except Exception as exc:
+                breaker.record_failure()
+                logger.warning(
+                    "market provider request failed",
+                    extra={"provider": source_name, "cache_key": key, "error_type": type(exc).__name__},
+                )
                 continue
 
         stored = self.last_valid.load(key)

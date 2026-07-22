@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_aion.db")
 os.environ.setdefault("LAST_VALID_STORE_PATH", "data/test_last_valid.json")
+os.environ.setdefault("JWT_SECRET", "test-only-value-with-more-than-thirty-two-characters")
 
 import pytest  # noqa: E402
 
