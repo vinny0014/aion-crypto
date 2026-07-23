@@ -1,0 +1,41 @@
+name: Create first administrator
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create-first-admin:
+    name: Create first administrator
+    runs-on: ubuntu-latest
+    environment: production-bootstrap
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      FIRST_ADMIN_EMAIL: ${{ secrets.FIRST_ADMIN_EMAIL }}
+      FIRST_ADMIN_PASSWORD: ${{ secrets.FIRST_ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c7ed75f57c362b06faee339afb6562ec7e10c160
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: false
+      - name: Mask bootstrap secrets
+        shell: bash
+        run: |
+          echo "::add-mask::$DATABASE_URL"
+          echo "::add-mask::$FIRST_ADMIN_EMAIL"
+          echo "::add-mask::$FIRST_ADMIN_PASSWORD"
+      - name: Install application dependencies
+        run: python -m pip install --disable-pip-version-check --no-cache-dir -r requirements.txt
+      - name: Confirm schema at migration head
+        run: python -m alembic -c alembic.ini upgrade head
+      - name: Create the first administrator
+        run: python -m app.cli.bootstrap_first_admin
