@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.cli.create_admin import (
     AdminCreationError,
@@ -18,6 +18,7 @@ from app.cli.bootstrap_first_admin import main as bootstrap_main
 from app.db import Base
 from app.models import User
 from app.security import verify_password
+from app.services.first_admin import create_first_admin
 
 
 @pytest.fixture
@@ -45,6 +46,58 @@ def test_cli_creates_normalized_admin_with_login_compatible_hash(session_factory
     assert "administrator_created" in caplog.text
     assert password not in caplog.text
     assert stored.password_hash not in caplog.text
+
+
+def test_create_first_admin_uses_real_session_from_default_sessionmaker(monkeypatch, tmp_path):
+    """The default path must call the real factory, then use its Session instance."""
+    import app.db as dbmod
+    from app.config import get_settings
+    from app.db import get_sessionmaker
+
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/default-sessionmaker.db")
+    get_settings.cache_clear()
+    dbmod._engine = None
+    dbmod._SessionLocal = None
+    try:
+        factory = get_sessionmaker()
+        Base.metadata.create_all(dbmod.get_engine())
+        assert callable(factory)
+        session = factory()
+        assert isinstance(session, Session)
+        session.close()
+
+        admin = create_first_admin("admin@example.com", "Correct-Horse-7!")
+
+        session = factory()
+        stored = session.get(User, admin.id)
+        session.close()
+        assert stored is not None
+        assert stored.email == "admin@example.com"
+    finally:
+        dbmod._engine = None
+        dbmod._SessionLocal = None
+        get_settings.cache_clear()
+
+
+def test_create_first_admin_calls_injected_factory_once(session_factory):
+    calls = 0
+
+    def factory() -> Session:
+        nonlocal calls
+        calls += 1
+        return session_factory()
+
+    create_first_admin("admin@example.com", "Correct-Horse-7!", factory)
+
+    assert calls == 1
+
+
+def test_validation_failure_does_not_create_or_close_a_session():
+    def unexpected_factory() -> Session:
+        raise AssertionError("session factory must not run after validation failure")
+
+    with pytest.raises(AdminCreationError):
+        create_first_admin("not-an-email", "Correct-Horse-7!", unexpected_factory)
 
 
 @pytest.mark.parametrize("password", ["short1!A", "alllowercase1!", "ALLUPPERCASE1!", "NoNumberHere!", "NoSymbolHere1"])

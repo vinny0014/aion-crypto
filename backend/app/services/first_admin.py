@@ -65,12 +65,13 @@ def _lock_first_admin_creation(session: Session) -> None:
 def create_first_admin(
     email: str,
     password: str,
-    session_factory: Callable[[], Session] = get_sessionmaker,
+    session_factory: Callable[[], Session] | None = None,
 ) -> User:
     """Persist the only administrator through the same ORM and bcrypt path as login."""
     normalized_email = normalize_email(email)
     validate_password_strength(password)
-    session = session_factory()
+    factory = session_factory or get_sessionmaker()
+    session: Session = factory()
     try:
         _lock_first_admin_creation(session)
         if session.execute(select(User.id).where(User.role == _ADMIN_ROLE).limit(1)).scalar_one_or_none():
