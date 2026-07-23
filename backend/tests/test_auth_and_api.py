@@ -76,3 +76,30 @@ def test_registry_endpoint(client):
     assert r.status_code == 200
     symbols = [c["symbol"] for c in r.json()["data"]]
     assert "BTC" in symbols and "ETH" in symbols
+
+
+def test_watchlist_is_persistent_unique_and_isolated(client):
+    from app.db import get_sessionmaker
+    from app.models import User
+    from app.security import hash_password
+
+    session = get_sessionmaker()()
+    session.add_all([
+        User(email="alice@example.com", password_hash=hash_password("s3cret!pass")),
+        User(email="bob@example.com", password_hash=hash_password("s3cret!pass")),
+    ])
+    session.commit(); session.close()
+
+    alice = client.post("/api/v1/auth/login", json={"email": "alice@example.com", "password": "s3cret!pass"}).json()
+    bob = client.post("/api/v1/auth/login", json={"email": "bob@example.com", "password": "s3cret!pass"}).json()
+    alice_headers = {"Authorization": f"Bearer {alice['access_token']}"}
+    bob_headers = {"Authorization": f"Bearer {bob['access_token']}"}
+
+    assert client.get("/api/v1/watchlist").status_code == 401
+    assert client.post("/api/v1/watchlist", json={"symbol": "BTC"}, headers=alice_headers).status_code == 201
+    assert client.post("/api/v1/watchlist", json={"symbol": "ETH"}, headers=alice_headers).status_code == 201
+    assert client.post("/api/v1/watchlist", json={"symbol": "BTC"}, headers=alice_headers).status_code == 409
+    assert [item["symbol"] for item in client.get("/api/v1/watchlist", headers=alice_headers).json()["data"]] == ["BTC", "ETH"]
+    assert client.get("/api/v1/watchlist", headers=bob_headers).json()["data"] == []
+    assert client.delete("/api/v1/watchlist/BTC", headers=alice_headers).status_code == 204
+    assert [item["symbol"] for item in client.get("/api/v1/watchlist", headers=alice_headers).json()["data"]] == ["ETH"]
