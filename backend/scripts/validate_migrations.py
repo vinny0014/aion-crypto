@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from pathlib import Path
 
 from sqlalchemy import create_engine, inspect
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from app.config import get_settings
 
