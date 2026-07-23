@@ -9,7 +9,7 @@ Target architecture (no Vercel; independent from AION News):
 Checklist before go-live:
 1. Set all production env vars (see ENVIRONMENT_VARIABLES.md); generate a strong `JWT_SECRET`.
 2. Point `DATABASE_URL` at Supabase. Render Free runs `alembic -c alembic.ini upgrade head` through its versioned startup script; do not create tables manually.
-3. Seed admin via `scripts/seed_admin.py` on the server.
+3. After the API migration completes, create the first administrator once with the versioned CLI described in `FIRST_ADMIN.md`. Do not seed an administrator during build or startup.
 4. Configure domain + SSL; verify `/health` and homepage provenance badges show `live`.
 5. Register sitemap in Google Search Console and Bing Webmaster.
 6. Do NOT enable paid AI keys until Cost Guard summary is visible in admin.
