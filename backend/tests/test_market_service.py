@@ -35,6 +35,8 @@ GECKO_GLOBAL = {
         "market_cap_percentage": {"btc": 52.3, "eth": 17.1},
         "market_cap_change_percentage_24h_usd": 1.25,
         "active_cryptocurrencies": 12000,
+        "markets": 900,
+        "updated_at": 1720000000,
     }
 }
 
@@ -115,6 +117,8 @@ def test_global_metrics(tmp_path):
     result = asyncio.run(svc.get_global())
     assert result["status"] == "live"
     assert result["data"]["btc_dominance_pct"] == pytest.approx(52.3)
+    assert result["data"]["markets"] == 900
+    assert result["data"]["last_updated"] == 1720000000
 
 
 def test_unknown_coin_is_not_found(tmp_path):

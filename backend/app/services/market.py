@@ -233,6 +233,8 @@ class MarketService:
                 "eth_dominance_pct": float(d["market_cap_percentage"]["eth"]),
                 "market_cap_change_24h_pct": float(d.get("market_cap_change_percentage_24h_usd") or 0.0),
                 "active_cryptocurrencies": int(d.get("active_cryptocurrencies") or 0),
+                "markets": int(d.get("markets") or 0),
+                "last_updated": int(d.get("updated_at") or 0) or None,
             }
 
         return await self._resolve(key, [("coingecko", from_coingecko)])
