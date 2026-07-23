@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "../../components/Analytics";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
 
@@ -30,6 +31,7 @@ export default function LoginPage() {
       }
       const tokens = await res.json();
       sessionStorage.setItem("aion-access-token", tokens.access_token);
+      track("login");
       setStatus("ok");
       setMessage("Signed in. Admin area access is enabled for this session.");
     } catch {

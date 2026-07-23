@@ -5,19 +5,42 @@ import { useEffect, useMemo, useState } from "react";
 import { FIXTURE_TABLE } from "../../lib/fixtures";
 import { fmtUsd } from "../../lib/format";
 import { Delta } from "../../components/ui";
+import { track } from "../../components/Analytics";
 
 const KEY = "aion-crypto-watchlist";
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
 
 export default function WatchlistPage() {
   const [symbols, setSymbols] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [accountSynced, setAccountSynced] = useState(false);
 
   useEffect(() => {
-    try { setSymbols(JSON.parse(localStorage.getItem(KEY) ?? "[]")); } catch { /* fresh start */ }
-    setLoaded(true);
+    const local = (() => { try { return JSON.parse(localStorage.getItem(KEY) ?? "[]") as string[]; } catch { return []; } })();
+    const token = sessionStorage.getItem("aion-access-token");
+    if (!BACKEND || !token) { setSymbols(local); setLoaded(true); return; }
+    fetch(`${BACKEND}/api/v1/watchlist`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("watchlist unavailable");
+        const data = (await response.json()) as { data: { symbol: string }[] };
+        setSymbols(data.data.map((item) => item.symbol)); setAccountSynced(true);
+      })
+      .catch(() => setSymbols(local))
+      .finally(() => setLoaded(true));
   }, []);
 
-  const save = (next: string[]) => {
+  const save = async (next: string[], action?: { add?: string; remove?: string }) => {
+    const token = sessionStorage.getItem("aion-access-token");
+    if (BACKEND && token && action) {
+      const response = await fetch(action.add ? `${BACKEND}/api/v1/watchlist` : `${BACKEND}/api/v1/watchlist/${action.remove}`, {
+        method: action.add ? "POST" : "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: action.add ? JSON.stringify({ symbol: action.add }) : undefined,
+      });
+      if (!response.ok) return;
+      setAccountSynced(true);
+      track(action.add ? "watchlist_add" : "watchlist_remove", { symbol: action.add ?? action.remove ?? "" });
+    }
     setSymbols(next);
     localStorage.setItem(KEY, JSON.stringify(next));
   };
@@ -29,7 +52,7 @@ export default function WatchlistPage() {
     <div className="mx-auto max-w-3xl py-6">
       <h1 className="font-display text-2xl font-bold">Watchlist</h1>
       <p className="mt-1 text-[13px] text-ink-dim">
-        Saved locally in your browser. Sign in (coming with accounts) to sync across devices. Reference prices shown; live watchlist pricing connects to the market API.
+        {accountSynced ? "Saved to your account and synced across sessions." : "Saved locally in this browser. Sign in to sync across devices."} Reference prices shown; live watchlist pricing connects to the market API.
       </p>
       {!loaded ? null : items.length === 0 ? (
         <div className="card mt-5 p-6 text-center text-[14px] text-ink-dim">
@@ -41,16 +64,16 @@ export default function WatchlistPage() {
             <li key={c.symbol} className="flex items-center gap-3 px-4 py-3">
               <div className="flex flex-col gap-1">
                 <button aria-label={`Move ${c.symbol} up`} disabled={i === 0} className="text-ink-dim disabled:opacity-30"
-                  onClick={() => { const n = [...symbols]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; save(n); }}>▲</button>
+                  onClick={() => { const n = [...symbols]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; void save(n); }}>▲</button>
                 <button aria-label={`Move ${c.symbol} down`} disabled={i === items.length - 1} className="text-ink-dim disabled:opacity-30"
-                  onClick={() => { const n = [...symbols]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; save(n); }}>▼</button>
+                  onClick={() => { const n = [...symbols]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; void save(n); }}>▼</button>
               </div>
               <Link href={`/crypto/${c.symbol}`} className="font-semibold hover:text-primary-glow">{c.name} <span className="text-ink-dim">{c.symbol}</span></Link>
               <span className="num ml-auto">{fmtUsd(c.price)}</span>
               <Delta value={c.change_24h_pct} />
               <button
                 className="ml-2 rounded-md border border-line px-2 py-1 text-[12px] text-ink-dim hover:text-accent-red"
-                onClick={() => save(symbols.filter((s) => s !== c.symbol))}
+                onClick={() => void save(symbols.filter((s) => s !== c.symbol), { remove: c.symbol })}
               >
                 Remove
               </button>
@@ -61,7 +84,7 @@ export default function WatchlistPage() {
       <h2 className="mt-8 text-[13px] font-semibold uppercase tracking-wide">Add coins</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         {available.map((c) => (
-          <button key={c.symbol} onClick={() => save([...symbols, c.symbol])} className="chip hover:border-primary hover:text-ink">
+          <button key={c.symbol} onClick={() => void save([...symbols, c.symbol], { add: c.symbol })} className="chip hover:border-primary hover:text-ink">
             + {c.symbol}
           </button>
         ))}
