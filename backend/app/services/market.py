@@ -12,6 +12,7 @@ was used, so the frontend can always display provenance and freshness.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from typing import Any, Optional
@@ -69,7 +70,10 @@ class MarketService:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=self.settings.http_timeout_seconds)
+            self._client = httpx.AsyncClient(
+                timeout=self.settings.http_timeout_seconds,
+                headers={"Accept": "application/json", "User-Agent": "AION-Crypto/1.0 (public-market-data)"},
+            )
         return self._client
 
     async def close(self) -> None:
@@ -81,9 +85,21 @@ class MarketService:
 
     async def _fetch_json(self, url: str, params: dict | None = None) -> Any:
         client = await self._get_client()
-        resp = await client.get(url, params=params)
-        resp.raise_for_status()
-        return resp.json()
+        attempts = max(1, self.settings.http_retry_attempts)
+        for attempt in range(attempts):
+            try:
+                resp = await client.get(url, params=params)
+                # Keyless CoinGecko can transiently rate-limit by IP. Retry
+                # only transient upstream failures; client errors remain
+                # visible to the circuit breaker immediately.
+                if resp.status_code == 429 or resp.status_code >= 500:
+                    resp.raise_for_status()
+                resp.raise_for_status()
+                return resp.json()
+            except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError):
+                if attempt + 1 >= attempts:
+                    raise
+                await asyncio.sleep(0.25 * (2 ** attempt))
 
     def _wrap(self, data: Any, source: str, status: str = "live", stale: bool = False) -> dict:
         return {
@@ -123,9 +139,13 @@ class MarketService:
                 return wrapped
             except Exception as exc:
                 breaker.record_failure()
+                status_code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
                 logger.warning(
-                    "market provider request failed",
-                    extra={"provider": source_name, "cache_key": key, "error_type": type(exc).__name__},
+                    "market provider request failed provider=%s cache_key=%s error_type=%s status_code=%s",
+                    source_name,
+                    key,
+                    type(exc).__name__,
+                    status_code,
                 )
                 continue
 
@@ -270,7 +290,7 @@ class MarketService:
                 "image": None,
             }
 
-        return await self._resolve(key, [("coingecko", from_coingecko), ("binance", from_binance)])
+        return await self._resolve(key, [("binance", from_binance), ("coingecko", from_coingecko)])
 
     async def get_klines(self, symbol: str, interval: str = "1h", limit: int = 168) -> dict:
         symbol = symbol.upper()

@@ -9,7 +9,9 @@ import {
   FIXTURE_TICKER,
 } from "./fixtures";
 
-const BACKEND = process.env.BACKEND_URL?.replace(/\/$/, "");
+// BACKEND_URL is server-only. Hostinger preview supplies the public variable,
+// so accept it as the server-rendered fallback as well.
+const BACKEND = (process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL)?.replace(/\/$/, "");
 
 export type Provenance = {
   source: string | null;
@@ -24,9 +26,11 @@ async function backendGet<T>(path: string): Promise<Wrapped<T> | null> {
   if (!BACKEND) return null;
   try {
     const res = await fetch(`${BACKEND}${path}`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
+    // The API answered, so keep its honest unavailable payload distinct from
+    // an unreachable backend. A non-2xx response is also an API-level data
+    // failure, never a reason to silently present fixtures as live values.
+    if (!res.ok) return { data: null, source: null, status: "unavailable" };
     const body = (await res.json()) as Wrapped<T>;
-    if (body.status === "unavailable" || body.data == null) return null;
     return body;
   } catch {
     return null;

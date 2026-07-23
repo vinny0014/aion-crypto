@@ -24,10 +24,13 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
-    binance_base_url: str = "https://api.binance.com"
+    # Binance documents this market-data-only host for public endpoints. It
+    # intentionally cannot be used for account or trading operations.
+    binance_base_url: str = "https://data-api.binance.vision"
     coingecko_base_url: str = "https://api.coingecko.com/api/v3"
     market_cache_ttl_seconds: int = 60
     http_timeout_seconds: float = 8.0
+    http_retry_attempts: int = 2
 
     total_api_monthly_limit_usd: float = 10.0
 
