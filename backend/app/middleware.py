@@ -13,6 +13,15 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
+_instances: list["RateLimitMiddleware"] = []
+
+
+def reset_rate_limits() -> None:
+    """Clear all in-process rate-limit counters (test isolation / ops hook)."""
+    for instance in _instances:
+        with instance._lock:
+            instance._requests.clear()
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, public_limit: int = 120, auth_limit: int = 10) -> None:
@@ -21,6 +30,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.auth_limit = max(1, auth_limit)
         self._requests: dict[str, deque[float]] = defaultdict(deque)
         self._lock = threading.Lock()
+        _instances.append(self)
 
     def _group(self, path: str) -> tuple[str, int] | None:
         if path.startswith("/health"):
