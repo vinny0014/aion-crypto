@@ -70,6 +70,10 @@ def test_login_flow_and_role_protection(client):
     refreshed = client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert refreshed.status_code == 200
 
+    logout = client.post("/api/v1/auth/logout", json={"refresh_token": refreshed.json()["refresh_token"]})
+    assert logout.status_code == 204
+    assert client.post("/api/v1/auth/refresh", json={"refresh_token": refreshed.json()["refresh_token"]}).status_code == 401
+
 
 def test_registry_endpoint(client):
     r = client.get("/api/v1/market/registry")

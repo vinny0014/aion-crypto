@@ -1,5 +1,6 @@
 """Auth primitives: bcrypt password hashing + JWT access/refresh tokens."""
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 import bcrypt
 import jwt
@@ -18,7 +19,7 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def _create_token(subject: str, role: str, token_type: str, expires_delta: timedelta) -> str:
+def _create_token(subject: str, role: str, token_type: str, expires_delta: timedelta, token_id: str | None = None) -> str:
     s = get_settings()
     now = datetime.now(timezone.utc)
     payload = {
@@ -28,6 +29,8 @@ def _create_token(subject: str, role: str, token_type: str, expires_delta: timed
         "iat": now,
         "exp": now + expires_delta,
     }
+    if token_id:
+        payload["jti"] = token_id
     return jwt.encode(payload, s.jwt_secret, algorithm=s.jwt_algorithm)
 
 
@@ -36,9 +39,9 @@ def create_access_token(subject: str, role: str) -> str:
     return _create_token(subject, role, "access", timedelta(minutes=s.access_token_expire_minutes))
 
 
-def create_refresh_token(subject: str, role: str) -> str:
+def create_refresh_token(subject: str, role: str, token_id: str | None = None) -> str:
     s = get_settings()
-    return _create_token(subject, role, "refresh", timedelta(days=s.refresh_token_expire_days))
+    return _create_token(subject, role, "refresh", timedelta(days=s.refresh_token_expire_days), token_id or uuid4().hex)
 
 
 def decode_token(token: str) -> dict:
