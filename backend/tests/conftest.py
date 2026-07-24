@@ -15,6 +15,13 @@ def clean_state(tmp_path, monkeypatch):
     # isolate persisted last-valid file per test
     monkeypatch.setenv("LAST_VALID_STORE_PATH", str(tmp_path / "last_valid.json"))
     from app.config import get_settings
+
     get_settings.cache_clear()
+    # the FastAPI app (and its middleware) is a module singleton, so the
+    # process-local rate-limit buckets would otherwise leak across tests and
+    # 429 later auth calls in the suite
+    from app.middleware import reset_rate_limits
+
+    reset_rate_limits()
     yield
     get_settings.cache_clear()
