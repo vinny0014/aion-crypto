@@ -1,6 +1,6 @@
 // Hand-rolled SVG charts: real data in, no static images, no layout shift
 // (fixed viewBox), responsive by width.
-import type { Kline } from "@/lib/api";
+import type { Kline } from "../lib/api";
 
 function scale(vals: number[], h: number, pad = 4): (v: number) => number {
   const min = Math.min(...vals);

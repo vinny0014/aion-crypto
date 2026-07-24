@@ -7,10 +7,16 @@
   --font-grotesk: "Space Grotesk", var(--font-inter);
 }
 
-html { color-scheme: dark; }
+html {
+  color-scheme: dark;
+  max-width: 100%;
+  overflow-x: clip;
+}
 body {
   @apply bg-bg text-ink antialiased;
   font-feature-settings: "tnum" 1, "cv02" 1;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .num { font-variant-numeric: tabular-nums; }

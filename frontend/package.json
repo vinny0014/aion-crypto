@@ -5,27 +5,40 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "next build && node scripts/prepare-standalone.mjs",
+    "start": "node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
-    "lint": "next lint"
+    "lint": "eslint . --max-warnings=0",
+    "e2e": "node scripts/run-e2e.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "next": "^14.2.21",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+  "engines": {
+    "node": ">=22 <25"
   },
-  "devDependencies": {
+  "dependencies": {
     "@types/node": "^22.20.1",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
+    "eslint": "9.39.2",
+    "eslint-config-next": "15.5.21",
+    "next": "15.5.21",
+    "postcss": "8.5.21",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2"
   },
-  "private": true
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@playwright/test": "1.55.1",
+    "@sparticuz/chromium": "138.0.2"
+  },
+  "private": true,
+  "overrides": {
+    "postcss": "8.5.21",
+    "sharp": "0.35.3"
+  }
 }

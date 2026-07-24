@@ -9,11 +9,12 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
-python -m pytest          # 23 tests
+python -m pytest          # 28 tests as of the production review
 ```
-Seed the first admin (interactive, no hardcoded credentials):
+Create the first admin (interactive, no hardcoded credentials):
 ```bash
-cd backend && ../scripts/seed_admin.py
+cd backend
+python -m app.cli.create_admin
 ```
 
 ## Frontend

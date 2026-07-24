@@ -17,7 +17,7 @@ def get_engine():
     if _engine is None:
         url = get_settings().database_url
         connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
-        _engine = create_engine(url, connect_args=connect_args)
+        _engine = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
     return _engine
 
 
@@ -37,5 +37,9 @@ def get_db():
 
 
 def init_db() -> None:
+    # Production schema changes are migration-only. This prevents an app boot
+    # from silently drifting the Supabase/PostgreSQL schema.
+    if get_settings().app_env.lower() == "production":
+        return
     from app import models  # noqa: F401  ensure models are registered
     Base.metadata.create_all(bind=get_engine())

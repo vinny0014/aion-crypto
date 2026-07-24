@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { logout, verifySession, type AuthUser } from "../lib/auth";
 
 const NAV = [
   ["Markets", "/markets"], ["News", "/news"], ["Coins", "/coins"], ["Analysis", "/analysis"],
@@ -20,6 +25,18 @@ function Logo() {
 }
 
 export default function Header() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const router = useRouter();
+
+  useEffect(() => { void verifySession().then(setUser); }, []);
+
+  async function onLogout() {
+    await logout();
+    setUser(null);
+    router.push("/");
+    router.refresh();
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 px-3 sm:px-5">
@@ -39,12 +56,10 @@ export default function Header() {
         <nav className="ml-auto flex items-center gap-2 text-sm">
           <Link href="/watchlist" className="chip hover:text-ink">☆ Watchlist</Link>
           <Link href="/newsletter" className="chip hidden hover:text-ink sm:inline-flex">✉ Newsletter</Link>
-          <Link
-            href="/login"
-            className="rounded-lg bg-primary px-3 py-1.5 font-medium text-white shadow-glow hover:bg-primary-glow"
-          >
-            Sign in
-          </Link>
+          {user ? <>
+            {(user.role === "admin" || user.role === "editor") && <Link href="/admin" className="chip hover:text-ink">Admin</Link>}
+            <button onClick={() => void onLogout()} className="rounded-lg border border-line px-3 py-1.5 font-medium text-ink hover:border-primary" aria-label="Sign out">Sign out</button>
+          </> : <Link href="/login" className="rounded-lg bg-primary px-3 py-1.5 font-medium text-white shadow-glow hover:bg-primary-glow">Sign in</Link>}
         </nav>
       </div>
       <nav className="mx-auto flex max-w-[1400px] items-center gap-1 overflow-x-auto px-3 pb-2 sm:px-5 scroll-thin" aria-label="Sections">

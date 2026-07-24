@@ -13,7 +13,7 @@
 
 ## Auth failures
 - 401 on valid creds → check JWT_SECRET consistency across restarts.
-- Locked out → run `scripts/seed_admin.py` with a new admin (then remove it).
+- Locked out → use the controlled first-admin process in `FIRST_ADMIN.md`; do not use a seed script or alter the database manually.
 
 ## Cost band escalated
 - `GET /api/v1/cost/summary`; inspect `cost_ledger` for the runaway agent/task; the band system already throttles automatically. Never raise the limit mid-month to "unblock".

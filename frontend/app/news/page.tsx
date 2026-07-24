@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FIXTURE_ARTICLES } from "@/lib/fixtures";
+import { FIXTURE_ARTICLES } from "../../lib/fixtures";
 
 export const metadata: Metadata = {
   title: "News",
   description: "Crypto market news and coverage from AION Crypto.",
   alternates: { canonical: "/news" },
+  robots: { index: false, follow: false },
 };
 
 export default function NewsPage() {

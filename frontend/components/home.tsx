@@ -1,7 +1,7 @@
 import Link from "next/link";
-import type { GlobalMetrics, Kline, TickerCoin, Wrapped } from "@/lib/api";
-import { FIXTURE_ARTICLES, FIXTURE_INSIGHT } from "@/lib/fixtures";
-import { fmtNum, fmtPct, fmtUsd } from "@/lib/format";
+import type { GlobalMetrics, Kline, TickerCoin, Wrapped } from "../lib/api";
+import { FIXTURE_ARTICLES, FIXTURE_INSIGHT } from "../lib/fixtures";
+import { fmtNum, fmtPct, fmtUsd } from "../lib/format";
 import { AreaChart, Donut, FearGreedGauge, Sparkline } from "./charts";
 import { CoinDot, Delta, SectionTitle, SourceTag, Unavailable } from "./ui";
 
@@ -9,7 +9,7 @@ import { CoinDot, Delta, SectionTitle, SourceTag, Unavailable } from "./ui";
 export function TickerBar({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
   if (!ticker.data) return null;
   return (
-    <div className="-mx-3 border-b border-line bg-bg-soft/60 sm:-mx-5">
+    <div className="border-b border-line bg-bg-soft/60">
       <div className="mx-auto flex max-w-[1400px] items-center gap-5 overflow-x-auto px-3 py-2 sm:px-5 scroll-thin">
         {ticker.data.map((c) => (
           <Link key={c.symbol} href={`/crypto/${c.symbol}`} className="flex shrink-0 items-center gap-2 text-[12.5px]">
@@ -38,7 +38,7 @@ export function GlobalMetricsBar({ g }: { g: Wrapped<GlobalMetrics> }) {
       ]
     : [];
   return (
-    <div className="-mx-3 border-b border-line sm:-mx-5">
+    <div className="border-b border-line">
       <div className="mx-auto flex max-w-[1400px] items-stretch gap-6 overflow-x-auto px-3 py-3 sm:px-5 scroll-thin">
         {d ? (
           items.map(([label, value, delta]) => (

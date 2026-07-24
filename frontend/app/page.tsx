@@ -1,7 +1,7 @@
-import { getGlobal, getKlines, getMarketsTable, getTicker } from "@/lib/api";
+import { getGlobal, getKlines, getMarketsTable, getTicker } from "../lib/api";
 import {
   ArticlesGrid, GlobalMetricsBar, HeroRow, MarketRow, MoversRow, NewsletterBand, SnapshotsRow, TickerBar,
-} from "@/components/home";
+} from "../components/home";
 
 export const revalidate = 60;
 

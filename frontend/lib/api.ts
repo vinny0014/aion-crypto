@@ -9,7 +9,9 @@ import {
   FIXTURE_TICKER,
 } from "./fixtures";
 
-const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
+// BACKEND_URL is server-only. Hostinger preview supplies the public variable,
+// so accept it as the server-rendered fallback as well.
+const BACKEND = (process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL)?.replace(/\/$/, "");
 
 export type Provenance = {
   source: string | null;
@@ -21,11 +23,11 @@ export type Provenance = {
 export type Wrapped<T> = Provenance & { data: T | null };
 
 async function backendGet<T>(path: string): Promise<Wrapped<T> | null> {
+  if (!BACKEND) return null;
   try {
     const res = await fetch(`${BACKEND}${path}`, { next: { revalidate: 60 } });
     if (!res.ok) return null;
     const body = (await res.json()) as Wrapped<T>;
-    if (body.status === "unavailable" || body.data == null) return null;
     return body;
   } catch {
     return null;

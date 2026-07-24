@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: aion-crypto-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: ./scripts/start_render.sh
+    healthCheckPath: /health/ready
+    autoDeployTrigger: checksPass
+    previews:
+      generation: manual
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_NAME
+        value: AION Crypto
+      - key: APP_SHORT_NAME
+        value: AIONCRYPTO
+      - key: TAGLINE
+        value: Crypto Market Intelligence
+      - key: PUBLIC_SITE_URL
+        value: https://aioncrypto.cloud
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TOTAL_API_MONTHLY_LIMIT_USD
+        value: "10"
+      - key: RATE_LIMIT_PUBLIC_PER_MINUTE
+        value: "120"
+      - key: RATE_LIMIT_AUTH_PER_MINUTE
+        value: "10"

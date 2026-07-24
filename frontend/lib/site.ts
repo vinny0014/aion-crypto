@@ -11,14 +11,12 @@ export const DEPLOY_TARGET = "Hostinger";
 
 export const PRODUCTION_URL = "https://aioncrypto.cloud";
 
-// In production builds the canonical base is the official domain unless the
-// environment explicitly provides one; in development it comes from env vars
-// (falling back to the local dev server, never shipped to production output).
-export const SITE_URL: string =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.NODE_ENV === "production" ? PRODUCTION_URL : "http://localhost:3000");
+// Preview builds may override this value. There is deliberately no localhost
+// fallback in active source: developers opt in through .env.local.
+export const SITE_URL: string = process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_URL;
 
 export const CANONICAL_URL = SITE_URL;
+export const INDEXING_ENABLED = process.env.NEXT_PUBLIC_ENABLE_INDEXING === "true";
 
 export const CONTACT_EMAILS = {
   editorial: "editorial@aioncrypto.cloud",

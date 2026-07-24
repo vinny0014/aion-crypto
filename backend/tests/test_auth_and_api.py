@@ -29,6 +29,10 @@ def test_health(client):
     body = r.json()
     assert body["status"] == "ok"
     assert body["database"] == "ok"
+    assert client.get("/health/live").status_code == 200
+    ready = client.get("/health/ready")
+    assert ready.status_code == 200
+    assert ready.json()["status"] == "ready"
 
 
 def test_login_flow_and_role_protection(client):
@@ -56,11 +60,19 @@ def test_login_flow_and_role_protection(client):
     assert cost.status_code == 200
     assert cost.json()["band"] == "NORMAL"
 
+    overview = client.get("/api/v1/admin/overview", headers={"Authorization": f"Bearer {tokens['access_token']}"})
+    assert overview.status_code == 200
+    assert overview.json()["agents"]["status"] == "not_connected"
+
     anon = client.get("/api/v1/cost/summary")
     assert anon.status_code == 401
 
     refreshed = client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert refreshed.status_code == 200
+
+    logout = client.post("/api/v1/auth/logout", json={"refresh_token": refreshed.json()["refresh_token"]})
+    assert logout.status_code == 204
+    assert client.post("/api/v1/auth/refresh", json={"refresh_token": refreshed.json()["refresh_token"]}).status_code == 401
 
 
 def test_registry_endpoint(client):
@@ -68,3 +80,30 @@ def test_registry_endpoint(client):
     assert r.status_code == 200
     symbols = [c["symbol"] for c in r.json()["data"]]
     assert "BTC" in symbols and "ETH" in symbols
+
+
+def test_watchlist_is_persistent_unique_and_isolated(client):
+    from app.db import get_sessionmaker
+    from app.models import User
+    from app.security import hash_password
+
+    session = get_sessionmaker()()
+    session.add_all([
+        User(email="alice@example.com", password_hash=hash_password("s3cret!pass")),
+        User(email="bob@example.com", password_hash=hash_password("s3cret!pass")),
+    ])
+    session.commit(); session.close()
+
+    alice = client.post("/api/v1/auth/login", json={"email": "alice@example.com", "password": "s3cret!pass"}).json()
+    bob = client.post("/api/v1/auth/login", json={"email": "bob@example.com", "password": "s3cret!pass"}).json()
+    alice_headers = {"Authorization": f"Bearer {alice['access_token']}"}
+    bob_headers = {"Authorization": f"Bearer {bob['access_token']}"}
+
+    assert client.get("/api/v1/watchlist").status_code == 401
+    assert client.post("/api/v1/watchlist", json={"symbol": "BTC"}, headers=alice_headers).status_code == 201
+    assert client.post("/api/v1/watchlist", json={"symbol": "ETH"}, headers=alice_headers).status_code == 201
+    assert client.post("/api/v1/watchlist", json={"symbol": "BTC"}, headers=alice_headers).status_code == 409
+    assert [item["symbol"] for item in client.get("/api/v1/watchlist", headers=alice_headers).json()["data"]] == ["BTC", "ETH"]
+    assert client.get("/api/v1/watchlist", headers=bob_headers).json()["data"] == []
+    assert client.delete("/api/v1/watchlist/BTC", headers=alice_headers).status_code == 204
+    assert [item["symbol"] for item in client.get("/api/v1/watchlist", headers=alice_headers).json()["data"]] == ["ETH"]

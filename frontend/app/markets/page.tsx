@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getMarketsTable } from "@/lib/api";
-import { CoinDot, Delta, SourceTag, Unavailable } from "@/components/ui";
-import { fmtUsd } from "@/lib/format";
+import { getMarketsTable } from "../../lib/api";
+import { CoinDot, Delta, SourceTag, Unavailable } from "../../components/ui";
+import { fmtUsd } from "../../lib/format";
 
 export const revalidate = 60;
 export const metadata: Metadata = {

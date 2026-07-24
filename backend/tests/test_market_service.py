@@ -8,6 +8,8 @@ import pytest
 from app.cache import LastValidStore, TTLCache
 from app.services.market import MarketService
 
+BINANCE_URL = "https://data-api.binance.vision/api/v3/ticker/24hr"
+
 BINANCE_TICKER = [
     {
         "symbol": "BTCUSDT", "lastPrice": "66853.21", "priceChangePercent": "1.32",
@@ -33,6 +35,8 @@ GECKO_GLOBAL = {
         "market_cap_percentage": {"btc": 52.3, "eth": 17.1},
         "market_cap_change_percentage_24h_usd": 1.25,
         "active_cryptocurrencies": 12000,
+        "markets": 900,
+        "updated_at": 1720000000,
     }
 }
 
@@ -59,7 +63,7 @@ def svc_with(routes, fail_urls=frozenset(), tmp_path=None):
 
 
 def test_ticker_binance_primary(tmp_path):
-    svc = svc_with({"https://api.binance.com/api/v3/ticker/24hr": BINANCE_TICKER}, tmp_path=tmp_path)
+    svc = svc_with({BINANCE_URL: BINANCE_TICKER}, tmp_path=tmp_path)
     result = asyncio.run(svc.get_ticker(["BTC", "ETH"]))
     assert result["status"] == "live"
     assert result["source"] == "binance"
@@ -70,7 +74,7 @@ def test_ticker_binance_primary(tmp_path):
 def test_ticker_falls_back_to_coingecko(tmp_path):
     svc = svc_with(
         {"https://api.coingecko.com/api/v3/coins/markets": GECKO_MARKETS},
-        fail_urls={"https://api.binance.com/api/v3/ticker/24hr"},
+        fail_urls={BINANCE_URL},
         tmp_path=tmp_path,
     )
     result = asyncio.run(svc.get_ticker(["BTC"]))
@@ -80,7 +84,7 @@ def test_ticker_falls_back_to_coingecko(tmp_path):
 
 def test_ticker_serves_stale_last_valid_when_all_sources_fail(tmp_path):
     lv = LastValidStore(str(tmp_path / "lv.json"))
-    good = svc_with({"https://api.binance.com/api/v3/ticker/24hr": BINANCE_TICKER}, tmp_path=tmp_path)
+    good = svc_with({BINANCE_URL: BINANCE_TICKER}, tmp_path=tmp_path)
     good.last_valid = lv
     asyncio.run(good.get_ticker(["BTC", "ETH"]))  # populates last-valid
 
@@ -88,7 +92,7 @@ def test_ticker_serves_stale_last_valid_when_all_sources_fail(tmp_path):
         cache=TTLCache(),
         last_valid=lv,
         client=make_client({}, fail_urls={
-            "https://api.binance.com/api/v3/ticker/24hr",
+            BINANCE_URL,
             "https://api.coingecko.com/api/v3/coins/markets",
         }),
     )
@@ -100,7 +104,7 @@ def test_ticker_serves_stale_last_valid_when_all_sources_fail(tmp_path):
 
 def test_unavailable_when_nothing_ever_succeeded(tmp_path):
     svc = svc_with({}, fail_urls={
-        "https://api.binance.com/api/v3/ticker/24hr",
+        BINANCE_URL,
         "https://api.coingecko.com/api/v3/coins/markets",
     }, tmp_path=tmp_path)
     result = asyncio.run(svc.get_ticker(["BTC"]))
@@ -113,6 +117,8 @@ def test_global_metrics(tmp_path):
     result = asyncio.run(svc.get_global())
     assert result["status"] == "live"
     assert result["data"]["btc_dominance_pct"] == pytest.approx(52.3)
+    assert result["data"]["markets"] == 900
+    assert result["data"]["last_updated"] == 1720000000
 
 
 def test_unknown_coin_is_not_found(tmp_path):
