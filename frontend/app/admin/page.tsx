@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { authenticatedFetch, verifySession } from "../../lib/auth";
 
 type Overview = {
   tasks: Record<string, number>;
@@ -11,31 +12,22 @@ type Overview = {
   agents: { status: string; registered: string[] };
 };
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
-
 export default function AdminPage() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [state, setState] = useState<"loading" | "signed_out" | "offline" | "forbidden" | "ready">("loading");
 
   useEffect(() => {
-    const token = sessionStorage.getItem("aion-access-token");
-    if (!token) {
-      setState("signed_out");
-      return;
-    }
-    if (!BACKEND) {
-      setState("offline");
-      return;
-    }
-    fetch(`${BACKEND}/api/v1/admin/overview`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (response) => {
+    (async () => {
+      const user = await verifySession();
+      if (!user) { setState("signed_out"); return; }
+      if (user.role !== "admin" && user.role !== "editor") { setState("forbidden"); return; }
+      try {
+        const response = await authenticatedFetch("/api/v1/admin/overview");
         if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "forbidden" : "offline");
-        setOverview((await response.json()) as Overview);
+        setOverview(await response.json() as Overview);
         setState("ready");
-      })
-      .catch((error: Error) => setState(error.message === "forbidden" ? "forbidden" : "offline"));
+      } catch (error) { setState(error instanceof Error && error.message === "forbidden" ? "forbidden" : "offline"); }
+    })();
   }, []);
 
   return (

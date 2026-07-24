@@ -142,6 +142,7 @@ jobs:
         env:
           NEXT_PUBLIC_SITE_URL: https://aioncrypto.cloud
           NEXT_PUBLIC_ENABLE_INDEXING: "false"
+          NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:3100
       - run: npm run e2e
       - uses: actions/upload-artifact@v4
         if: failure()

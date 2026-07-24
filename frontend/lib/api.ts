@@ -26,10 +26,7 @@ async function backendGet<T>(path: string): Promise<Wrapped<T> | null> {
   if (!BACKEND) return null;
   try {
     const res = await fetch(`${BACKEND}${path}`, { next: { revalidate: 60 } });
-    // The API answered, so keep its honest unavailable payload distinct from
-    // an unreachable backend. A non-2xx response is also an API-level data
-    // failure, never a reason to silently present fixtures as live values.
-    if (!res.ok) return { data: null, source: null, status: "unavailable" };
+    if (!res.ok) return null;
     const body = (await res.json()) as Wrapped<T>;
     return body;
   } catch {
