@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { authenticatedFetch, verifySession } from "../../lib/auth";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BACKEND, authenticatedFetch, resolveSession } from "../../lib/auth";
 
 type Overview = {
   tasks: Record<string, number>;
@@ -14,21 +14,30 @@ type Overview = {
 
 export default function AdminPage() {
   const [overview, setOverview] = useState<Overview | null>(null);
-  const [state, setState] = useState<"loading" | "signed_out" | "offline" | "forbidden" | "ready">("loading");
+  const [state, setState] = useState<"loading" | "waking" | "signed_out" | "session_invalid" | "offline" | "forbidden" | "ready">("loading");
+  const busy = useRef(false);
 
-  useEffect(() => {
-    (async () => {
-      const user = await verifySession();
-      if (!user) { setState("signed_out"); return; }
-      if (user.role !== "admin" && user.role !== "editor") { setState("forbidden"); return; }
-      try {
-        const response = await authenticatedFetch("/api/v1/admin/overview");
-        if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "forbidden" : "offline");
-        setOverview(await response.json() as Overview);
-        setState("ready");
-      } catch (error) { setState(error instanceof Error && error.message === "forbidden" ? "forbidden" : "offline"); }
-    })();
+  const load = useCallback(async () => {
+    if (busy.current) return; // no duplicate concurrent checks (e.g. a double-clicked retry)
+    busy.current = true;
+    setState("loading");
+    try {
+      if (!BACKEND) { setState("offline"); return; }
+      const session = await resolveSession({ onProgress: () => setState("waking") });
+      if (session.status === "backend_unreachable") { setState("waking"); return; }
+      if (session.status === "session_invalid") { setState("session_invalid"); return; }
+      if (session.status !== "authenticated") { setState("signed_out"); return; }
+      if (session.user.role !== "admin" && session.user.role !== "editor") { setState("forbidden"); return; }
+      const response = await authenticatedFetch("/api/v1/admin/overview");
+      if (response.status === 401 || response.status === 403) { setState("forbidden"); return; }
+      if (!response.ok) { setState("waking"); return; }
+      setOverview(await response.json() as Overview);
+      setState("ready");
+    } catch { setState("waking"); }
+    finally { busy.current = false; }
   }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   return (
     <div className="py-6">
@@ -39,7 +48,16 @@ export default function AdminPage() {
       {state === "signed_out" && (
         <div className="card mt-5 p-5 text-sm text-ink-dim">Sign in to view operations. <Link href="/login" className="text-primary-glow">Open sign in</Link>.</div>
       )}
-      {state === "offline" && <div className="card mt-5 p-5 text-sm text-accent-red">Admin API is not connected in this preview.</div>}
+      {state === "waking" && (
+        <div className="card mt-5 flex flex-wrap items-center gap-3 p-5 text-sm text-accent-btc" role="status" aria-live="polite">
+          <span>Backend waking up… The operations API sleeps after inactivity and can take up to a minute to answer. Your session is still valid.</span>
+          <button onClick={() => void load()} className="rounded-lg border border-line px-3 py-1.5 font-medium text-ink hover:border-primary">Retry now</button>
+        </div>
+      )}
+      {state === "session_invalid" && (
+        <div className="card mt-5 p-5 text-sm text-ink-dim">Your session expired. <Link href="/login" className="text-primary-glow">Sign in again</Link>.</div>
+      )}
+      {state === "offline" && <div className="card mt-5 p-5 text-sm text-accent-red">Operations API is not configured in this build.</div>}
       {state === "forbidden" && <div className="card mt-5 p-5 text-sm text-accent-red">This account does not have admin access.</div>}
 
       {state === "ready" && overview && (
