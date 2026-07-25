@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { logout, verifySession, type AuthUser } from "../lib/auth";
+import { getTokens, logout, resolveSession, type SessionState } from "../lib/auth";
 
 const NAV = [
   ["Markets", "/markets"], ["News", "/news"], ["Coins", "/coins"], ["Analysis", "/analysis"],
@@ -25,14 +25,28 @@ function Logo() {
 }
 
 export default function Header() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<SessionState>({ status: "signed_out" });
+  const [hasTokens, setHasTokens] = useState(false);
+  const [checking, setChecking] = useState(true);
   const router = useRouter();
 
-  useEffect(() => { void verifySession().then(setUser); }, []);
+  useEffect(() => {
+    let active = true;
+    // read storage on the client only, to avoid a hydration mismatch
+    setHasTokens(Boolean(getTokens()));
+    void resolveSession().then((state) => {
+      if (!active) return;
+      setSession(state);
+      setHasTokens(Boolean(getTokens()));
+      setChecking(false);
+    });
+    return () => { active = false; };
+  }, []);
 
   async function onLogout() {
     await logout();
-    setUser(null);
+    setSession({ status: "signed_out" });
+    setHasTokens(false);
     router.push("/");
     router.refresh();
   }
@@ -56,10 +70,14 @@ export default function Header() {
         <nav className="ml-auto flex items-center gap-2 text-sm">
           <Link href="/watchlist" className="chip hover:text-ink">☆ Watchlist</Link>
           <Link href="/newsletter" className="chip hidden hover:text-ink sm:inline-flex">✉ Newsletter</Link>
-          {user ? <>
-            {(user.role === "admin" || user.role === "editor") && <Link href="/admin" className="chip hover:text-ink">Admin</Link>}
+          {session.status === "authenticated" ? <>
+            {(session.user.role === "admin" || session.user.role === "editor") && <Link href="/admin" className="chip hover:text-ink">Admin</Link>}
             <button onClick={() => void onLogout()} className="rounded-lg border border-line px-3 py-1.5 font-medium text-ink hover:border-primary" aria-label="Sign out">Sign out</button>
-          </> : <Link href="/login" className="rounded-lg bg-primary px-3 py-1.5 font-medium text-white shadow-glow hover:bg-primary-glow">Sign in</Link>}
+          </> : hasTokens && (checking || session.status === "backend_unreachable") ? (
+            // tokens are intact and the backend simply has not answered yet:
+            // showing "Sign in" here would look like an involuntary logout
+            <span className="chip text-accent-btc" role="status" aria-live="polite">Reconnecting…</span>
+          ) : <Link href="/login" className="rounded-lg bg-primary px-3 py-1.5 font-medium text-white shadow-glow hover:bg-primary-glow">Sign in</Link>}
         </nav>
       </div>
       <nav className="mx-auto flex max-w-[1400px] items-center gap-1 overflow-x-auto px-3 pb-2 sm:px-5 scroll-thin" aria-label="Sections">
