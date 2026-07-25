@@ -45,17 +45,16 @@ export default function AdminPage() {
       <p className="mt-1 text-[13px] text-ink-dim">Protected production-readiness view for tasks, incidents and Cost Guard.</p>
 
       {state === "loading" && <p className="mt-5 text-ink-dim" role="status">Loading operations status…</p>}
-      {state === "signed_out" && (
-        <div className="card mt-5 p-5 text-sm text-ink-dim">Sign in to view operations. <Link href="/login" className="text-primary-glow">Open sign in</Link>.</div>
+      {(state === "signed_out" || state === "session_invalid") && (
+        <div className="card mt-5 p-5 text-sm text-ink-dim">
+          {state === "session_invalid" ? "Your session expired. " : ""}Sign in to view operations. <Link href="/login" className="text-primary-glow">Open sign in</Link>.
+        </div>
       )}
       {state === "waking" && (
         <div className="card mt-5 flex flex-wrap items-center gap-3 p-5 text-sm text-accent-btc" role="status" aria-live="polite">
           <span>Backend waking up… The operations API sleeps after inactivity and can take up to a minute to answer. Your session is still valid.</span>
           <button onClick={() => void load()} className="rounded-lg border border-line px-3 py-1.5 font-medium text-ink hover:border-primary">Retry now</button>
         </div>
-      )}
-      {state === "session_invalid" && (
-        <div className="card mt-5 p-5 text-sm text-ink-dim">Your session expired. <Link href="/login" className="text-primary-glow">Sign in again</Link>.</div>
       )}
       {state === "offline" && <div className="card mt-5 p-5 text-sm text-accent-red">Operations API is not configured in this build.</div>}
       {state === "forbidden" && <div className="card mt-5 p-5 text-sm text-accent-red">This account does not have admin access.</div>}
