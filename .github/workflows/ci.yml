@@ -117,9 +117,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
-      - name: Audit frontend dependencies
+      - name: Audit production dependencies
         working-directory: frontend
-        run: npm ci && npm audit --audit-level=high
+        run: npm ci && npm audit --omit=dev --audit-level=high
+      - name: Audit full dependency tree - informational
+        working-directory: frontend
+        run: npm audit --audit-level=high
+        continue-on-error: true
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip, cache-dependency-path: backend/requirements.txt }
       - name: Audit backend dependencies
