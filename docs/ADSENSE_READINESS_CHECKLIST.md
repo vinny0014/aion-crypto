@@ -33,7 +33,8 @@ Overall status: **blocked — do not submit to AdSense yet**.
 | Content/image rights | Blocked | Record rights and source evidence for every indexed image/article |
 | Cost ceiling | Approved in code | R$300 ceiling, approximate R$250 baseline, zero new service and paid integrations disabled |
 | Local tests and security audits | Approved | 55 backend tests passed (one PostgreSQL-only skip), frontend lint/typecheck/build passed, seven E2E passed, and npm/Python audits found no known vulnerabilities |
-| Remote CI and deploy | Pending | Branch must push and Draft PR CI must finish green; production deploy is not part of this PR |
+| Remote CI | Approved | GitHub CI #66 (`30663593393`) passed configuration, backend/PostgreSQL migrations, frontend, security and E2E |
+| Production deploy | Pending | This Draft PR does not deploy or migrate production; complete the browser handoff and explicit GO/NO-GO first |
 
 ## AdSense activation configuration
 

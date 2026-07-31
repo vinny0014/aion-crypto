@@ -66,6 +66,7 @@ Decision: **do not request AdSense yet**
 - E2E: seven passed, covering public/SEO/mobile routes, cold start, invalid session, login, reload/logout and watchlist behavior.
 - Security: production npm dependency audit and Python dependency audit reported no known vulnerabilities.
 - Repository validation: configuration, hygiene, imports and `git diff --check` passed.
+- GitHub CI #66 (`30663593393`): configuration, backend/PostgreSQL migration validation, frontend, security and E2E all completed successfully on the Draft PR.
 
 ## Remaining risks
 
@@ -75,4 +76,4 @@ Decision: **do not request AdSense yet**
 4. Analytics/advertising consent behavior needs a jurisdiction-appropriate browser review before AdSense is enabled.
 5. Source terms, contact aliases, Search Console, Core Web Vitals, mobile appearance, Render logs and Supabase advisors require account/browser access.
 6. Render cold starts remain possible. No new worker or scheduler was added to hide that limitation.
-7. Remote CI and deployed behavior must still be confirmed from the pushed Draft PR; no production deploy is part of this work.
+7. Deployed behavior still requires the browser checks in the handoff; no production deploy is part of this work.
