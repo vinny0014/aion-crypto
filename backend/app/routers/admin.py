@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends
 
 from app.cost_guard import CostGuard
 from app.db import get_db
-from app.models import Incident, Task
+from app.models import Article, Incident, SocialOutbox, Source, Subscriber, Task
+from app.pipeline.registry import AGENTS
 from app.routers.auth import require_role
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -21,5 +22,13 @@ def overview(db: Session = Depends(get_db), _=Depends(require_role("admin", "edi
         "open_incidents": open_incidents,
         "cost_guard": CostGuard(db).summary(),
         "scheduler": {"status": "not_configured"},
-        "agents": {"status": "not_connected", "registered": []},
+        "agents": {"status": "connected", "registered": list(AGENTS)},
+        "content": {
+            "published": db.execute(select(func.count(Article.id)).where(Article.status.in_(("published", "updated")))).scalar_one(),
+            "drafts": db.execute(select(func.count(Article.id)).where(Article.status.in_(("detected", "normalized", "verifying", "verified", "drafting", "reviewing", "ready")))).scalar_one(),
+            "rejected": db.execute(select(func.count(Article.id)).where(Article.status.in_(("rejected", "compliance_failed", "failed")))).scalar_one(),
+            "sources": db.execute(select(func.count(Source.id))).scalar_one(),
+            "subscribers": db.execute(select(func.count(Subscriber.id)).where(Subscriber.confirmed.is_(True), Subscriber.unsubscribed.is_(False))).scalar_one(),
+            "social_prepared": db.execute(select(func.count(SocialOutbox.id)).where(SocialOutbox.status == "prepared")).scalar_one(),
+        },
     }

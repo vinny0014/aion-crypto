@@ -41,6 +41,9 @@ class Source(Base):
     kind: Mapped[str] = mapped_column(String(50), default="rss")  # rss|blog|regulatory|github|exchange
     trusted: Mapped[bool] = mapped_column(Boolean, default=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -49,16 +52,32 @@ class Article(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(300), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(300))
+    subtitle: Mapped[str] = mapped_column(String(500), default="")
     summary: Mapped[str] = mapped_column(Text, default="")
     body: Mapped[str] = mapped_column(Text, default="")
     category: Mapped[str] = mapped_column(String(100), default="news", index=True)
+    language: Mapped[str] = mapped_column(String(10), default="en")
+    related_asset: Mapped[str] = mapped_column(String(30), default="")
+    priority: Mapped[str] = mapped_column(String(20), default="normal", index=True)
     tags: Mapped[str] = mapped_column(String(500), default="")  # comma-separated
     image_url: Mapped[str] = mapped_column(String(600), default="")
     image_status: Mapped[str] = mapped_column(String(30), default="pending")  # pending|validated|failed
     source_url: Mapped[str] = mapped_column(String(600), default="")
     source_name: Mapped[str] = mapped_column(String(200), default="")
+    source_published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sources_json: Mapped[str] = mapped_column(Text, default="[]")
+    evidence_json: Mapped[str] = mapped_column(Text, default="[]")
+    is_fixture: Mapped[bool] = mapped_column(Boolean, default=False)
     content_hash: Mapped[str] = mapped_column(String(64), index=True, default="")
-    status: Mapped[str] = mapped_column(String(30), default="draft", index=True)  # draft|verified|published|rejected
+    status: Mapped[str] = mapped_column(String(30), default="detected", index=True)
+    confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
+    compliance_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    originality_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    seo_title: Mapped[str] = mapped_column(String(300), default="")
+    seo_description: Mapped[str] = mapped_column(String(320), default="")
+    canonical_url: Mapped[str] = mapped_column(String(600), default="")
+    author_name: Mapped[str] = mapped_column(String(120), default="AION Crypto")
+    rejection_reason: Mapped[str] = mapped_column(Text, default="")
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -105,6 +124,12 @@ class Subscriber(Base):
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False)  # double opt-in
     unsubscribed: Mapped[bool] = mapped_column(Boolean, default=False)
     segment: Mapped[str] = mapped_column(String(100), default="weekly")
+    source: Mapped[str] = mapped_column(String(200), default="website")
+    confirmation_token_hash: Mapped[str] = mapped_column(String(64), default="")
+    unsubscribe_token_hash: Mapped[str] = mapped_column(String(64), default="")
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -127,3 +152,62 @@ class Incident(Base):
     status: Mapped[str] = mapped_column(String(30), default="open", index=True)  # open|recovering|resolved
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SubscriberPreference(Base):
+    __tablename__ = "subscriber_preferences"
+    __table_args__ = (UniqueConstraint("subscriber_id", "category", name="uq_subscriber_preference"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subscriber_id: Mapped[int] = mapped_column(ForeignKey("subscribers.id"), index=True)
+    category: Mapped[str] = mapped_column(String(80), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EditorialEvent(Base):
+    __tablename__ = "editorial_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int | None] = mapped_column(ForeignKey("articles.id"), nullable=True, index=True)
+    agent: Mapped[str] = mapped_column(String(50), index=True)
+    from_state: Mapped[str] = mapped_column(String(30), default="")
+    to_state: Mapped[str] = mapped_column(String(30), index=True)
+    result: Mapped[str] = mapped_column(String(30), default="ok")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    evidence_json: Mapped[str] = mapped_column(Text, default="[]")
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class SocialOutbox(Base):
+    __tablename__ = "social_outbox"
+    __table_args__ = (UniqueConstraint("article_id", "channel", name="uq_social_outbox_article_channel"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
+    channel: Mapped[str] = mapped_column(String(30), index=True)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    utm_url: Mapped[str] = mapped_column(String(800), default="")
+    status: Mapped[str] = mapped_column(String(30), default="prepared", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class BreakingCampaign(Base):
+    __tablename__ = "breaking_campaigns"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provisional_title: Mapped[str] = mapped_column(String(300))
+    fact_summary: Mapped[str] = mapped_column(Text, default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    primary_source: Mapped[str] = mapped_column(String(800))
+    additional_sources_json: Mapped[str] = mapped_column(Text, default="[]")
+    related_asset: Mapped[str] = mapped_column(String(30), default="")
+    category: Mapped[str] = mapped_column(String(100), default="Market Analysis")
+    image_url: Mapped[str] = mapped_column(String(800), default="")
+    urgency: Mapped[str] = mapped_column(String(20), default="normal")
+    language: Mapped[str] = mapped_column(String(10), default="en")
+    publish_action: Mapped[str] = mapped_column(String(30), default="review")
+    prepare_social: Mapped[bool] = mapped_column(Boolean, default=True)
+    daily_candidate: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(30), default="draft", index=True)
+    article_id: Mapped[int | None] = mapped_column(ForeignKey("articles.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

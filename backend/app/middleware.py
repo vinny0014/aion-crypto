@@ -37,6 +37,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return None
         if path in {"/api/v1/auth/login", "/api/v1/auth/refresh"}:
             return "auth", self.auth_limit
+        if path == "/api/v1/audience/subscribe":
+            return "audience", self.auth_limit
         if path.startswith("/api/"):
             return "api", self.public_limit
         return None

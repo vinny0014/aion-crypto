@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     http_retry_attempts: int = 2
 
     total_api_monthly_limit_usd: float = 10.0
+    ecosystem_monthly_limit_brl: float = 300.0
+    ecosystem_known_cost_brl: float = 250.0
+    automatic_publish_enabled: bool = False
+    editorial_minimum_confidence: float = 0.82
 
     last_valid_store_path: str = "data/last_valid.json"
     rate_limit_public_per_minute: int = 120

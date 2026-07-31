@@ -15,7 +15,8 @@ from app.config import get_settings
 
 EXPECTED_TABLES = {
     "articles", "cost_ledger", "incidents", "sources", "subscribers",
-    "tasks", "users", "watchlist_items", "alembic_version",
+    "tasks", "users", "watchlist_items", "alembic_version", "subscriber_preferences",
+    "editorial_events", "social_outbox", "breaking_campaigns",
 }
 
 
