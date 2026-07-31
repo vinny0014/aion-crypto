@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BACKEND, authenticatedFetch, resolveSession } from "../../lib/auth";
+import AdminEditorial from "../../components/AdminEditorial";
 
 type Overview = {
   tasks: Record<string, number>;
@@ -10,6 +11,7 @@ type Overview = {
   cost_guard: { band: string; month_spend_usd: number; monthly_limit_usd: number };
   scheduler: { status: string };
   agents: { status: string; registered: string[] };
+  content?: { published: number; drafts: number; rejected: number; sources: number; subscribers: number; social_prepared: number };
 };
 
 export default function AdminPage() {
@@ -60,7 +62,7 @@ export default function AdminPage() {
       {state === "forbidden" && <div className="card mt-5 p-5 text-sm text-accent-red">This account does not have admin access.</div>}
 
       {state === "ready" && overview && (
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <section className="card p-4"><h2 className="text-xs uppercase text-ink-dim">Cost Guard</h2><p className="mt-2 text-xl font-bold">{overview.cost_guard.band}</p><p className="text-xs text-ink-dim">${overview.cost_guard.month_spend_usd.toFixed(2)} / ${overview.cost_guard.monthly_limit_usd.toFixed(2)}</p></section>
           <section className="card p-4"><h2 className="text-xs uppercase text-ink-dim">Open incidents</h2><p className="mt-2 text-xl font-bold">{overview.open_incidents}</p></section>
           <section className="card p-4"><h2 className="text-xs uppercase text-ink-dim">Scheduler</h2><p className="mt-2 text-sm font-semibold">{overview.scheduler.status.replaceAll("_", " ")}</p></section>
@@ -71,7 +73,8 @@ export default function AdminPage() {
               <dl className="mt-3 flex flex-wrap gap-4">{Object.entries(overview.tasks).map(([status, count]) => <div key={status}><dt className="text-xs text-ink-dim">{status}</dt><dd className="text-lg font-bold">{count}</dd></div>)}</dl>
             ) : <p className="mt-2 text-sm text-ink-dim">No tasks queued.</p>}
           </section>
-        </div>
+          {overview.content && Object.entries(overview.content).map(([label, count]) => <section key={label} className="card p-4"><h2 className="text-xs uppercase text-ink-dim">{label.replaceAll("_", " ")}</h2><p className="mt-2 text-xl font-bold">{count}</p></section>)}
+        </div><AdminEditorial /></>
       )}
     </div>
   );
