@@ -26,7 +26,7 @@ export default function AdminEditorial() {
     const payload = {
       provisional_title: form.get("title"), fact_summary: form.get("summary"), notes: form.get("notes"),
       primary_source: form.get("source"), additional_sources: String(form.get("additional") || "").split(/\s+/).filter(Boolean),
-      related_asset: form.get("asset"), category: form.get("category"), image_url: "", urgency: form.get("urgency"),
+      related_asset: form.get("asset"), category: form.get("category"), image_url: form.get("image"), urgency: form.get("urgency"),
       language: "en", action: form.get("action"),
       prepare_social: form.get("social") === "yes", daily_candidate: form.get("candidate") === "yes",
     };
@@ -76,6 +76,7 @@ export default function AdminEditorial() {
         <label className="text-sm">Category<select name="category" className="mt-1 w-full rounded-lg border border-line bg-bg-soft p-2">{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
         <label className="text-sm">Urgency<select name="urgency" className="mt-1 w-full rounded-lg border border-line bg-bg-soft p-2"><option>breaking</option><option>high</option><option>normal</option><option>evergreen</option></select></label>
         <label className="text-sm">Related asset<input name="asset" maxLength={30} placeholder="BTC" className="mt-1 w-full rounded-lg border border-line bg-bg-soft p-2" /></label>
+        <label className="text-sm">Optional rights-cleared image URL<input name="image" type="url" maxLength={800} className="mt-1 w-full rounded-lg border border-line bg-bg-soft p-2" /></label>
         <label className="text-sm">Action<select name="action" className="mt-1 w-full rounded-lg border border-line bg-bg-soft p-2"><option value="review">Review before publication</option><option value="draft">Save draft</option><option value="publish">Publish only if every gate passes</option></select></label>
         <div className="space-y-2 text-sm"><label className="flex gap-2"><input type="checkbox" name="social" value="yes" />Prepare social package</label><label className="flex gap-2"><input type="checkbox" name="candidate" value="yes" />Daily campaign candidate</label></div>
         <button className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white md:col-span-2">Queue sourced story</button>
