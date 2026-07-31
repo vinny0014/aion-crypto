@@ -14,6 +14,9 @@ Template: `.env.example` at repo root (copy into `backend/.env` and frontend env
 | RATE_LIMIT_PUBLIC_PER_MINUTE / RATE_LIMIT_AUTH_PER_MINUTE | backend | 120 / 10 | per-process safety layer; add an edge/shared limiter for multiple workers |
 | CIRCUIT_BREAKER_FAILURE_THRESHOLD / CIRCUIT_BREAKER_RECOVERY_SECONDS | backend | 3 / 30 | provider circuit-breaker controls |
 | TOTAL_API_MONTHLY_LIMIT_USD | backend | 10 | Cost Guard ceiling |
+| ECOSYSTEM_MONTHLY_LIMIT_BRL / ECOSYSTEM_KNOWN_COST_BRL | backend | 300 / 250 | Absolute ecosystem cap and known monthly baseline |
+| AUTOMATIC_PUBLISH_ENABLED | backend | false | Must remain false until editorial and AdSense readiness audit passes |
+| EDITORIAL_MINIMUM_CONFIDENCE | backend | 0.82 | Verification gate; never bypasses originality/compliance |
 | LAST_VALID_STORE_PATH | backend | data/last_valid.json | stale-fallback store |
 | FRONTEND_URL / CORS_ORIGINS | backend | local / empty | production and temporary preview browser origins |
 | NEXT_PUBLIC_BACKEND_URL | frontend | unset | public Render API URL; unset produces an honest offline state |
@@ -21,7 +24,11 @@ Template: `.env.example` at repo root (copy into `backend/.env` and frontend env
 | NEXT_PUBLIC_ENABLE_INDEXING | frontend | false | keep false for every preview; enable only at approved launch |
 | PUBLIC_SITE_URL | infra | https://aioncrypto.cloud | official production domain |
 | CANONICAL_URL | infra | https://aioncrypto.cloud | must equal PUBLIC_SITE_URL |
-| VITE_GA_MEASUREMENT_ID | frontend | empty | analytics stays OFF while empty — never use a fake ID |
+| NEXT_PUBLIC_GA_MEASUREMENT_ID | frontend | empty | analytics stays OFF while empty — never use a fake ID |
+| NEXT_PUBLIC_CLARITY_PROJECT_ID | frontend | empty | optional existing analytics integration; keep empty unless verified |
+| NEXT_PUBLIC_ADSENSE_ENABLED | frontend | false | master switch; keep false until approval and consent review |
+| NEXT_PUBLIC_ADSENSE_CLIENT_ID | frontend | empty | real `ca-pub-...` only; never invent or use test ownership data |
+| ADSENSE_PUBLISHER_ID | frontend server | empty | real `pub-...` for `/ads.txt`; route returns 404 while absent/invalid |
 | SMTP_* | backend | empty | newsletter sending disabled until configured |
 | ANTHROPIC_API_KEY | backend | empty | paid content generation disabled until configured; goes through Cost Guard |
 
