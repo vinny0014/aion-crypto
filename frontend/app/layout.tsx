@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Analytics from "../components/Analytics";
+import AdSenseBootstrap from "../components/AdSenseBootstrap";
 import { APP_NAME, INDEXING_ENABLED, TAGLINE, SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
         <Analytics />
+        <AdSenseBootstrap />
         <Header />
         <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-5">{children}</main>
         <Footer />

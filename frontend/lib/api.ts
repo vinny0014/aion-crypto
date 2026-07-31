@@ -12,6 +12,7 @@ import {
 // BACKEND_URL is server-only. Hostinger preview supplies the public variable,
 // so accept it as the server-rendered fallback as well.
 const BACKEND = (process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL)?.replace(/\/$/, "");
+const BACKEND_TIMEOUT_MS = 8_000;
 
 export type Provenance = {
   source: string | null;
@@ -25,13 +26,28 @@ export type Wrapped<T> = Provenance & { data: T | null };
 async function backendGet<T>(path: string): Promise<Wrapped<T> | null> {
   if (!BACKEND) return null;
   try {
-    const res = await fetch(`${BACKEND}${path}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${BACKEND}${path}`, {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+    });
     if (!res.ok) return null;
     const body = (await res.json()) as Wrapped<T>;
     return body;
   } catch {
     return null;
   }
+}
+
+async function backendJson<T>(path: string): Promise<T | null> {
+  if (!BACKEND) return null;
+  try {
+    const res = await fetch(`${BACKEND}${path}`, {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    return await res.json() as T;
+  } catch { return null; }
 }
 
 function sample<T>(data: T): Wrapped<T> {
@@ -117,4 +133,21 @@ export async function getKlines(symbol: string, interval = "1h", limit = 168): P
     (await backendGet<Kline[]>(`/api/v1/market/klines/${symbol}?interval=${interval}&limit=${limit}`)) ??
     sample(FIXTURE_KLINES[symbol.toUpperCase()] ?? FIXTURE_KLINES.BTC)
   );
+}
+
+export type PublishedArticle = {
+  id: number; slug: string; title: string; subtitle: string; summary: string; body: string;
+  category: string; tags: string[]; related_asset: string; priority: string; image_url: string;
+  sources: string[]; source_name: string; source_published_at: string | null;
+  author: string; canonical: string; published_at: string; updated_at: string;
+};
+
+export async function getPublishedArticles(): Promise<PublishedArticle[]> {
+  const response = await backendJson<{ data: PublishedArticle[] }>("/api/v1/articles?limit=100");
+  return response?.data ?? [];
+}
+
+export async function getPublishedArticle(slug: string): Promise<PublishedArticle | null> {
+  const response = await backendJson<{ data: PublishedArticle }>(`/api/v1/articles/${encodeURIComponent(slug)}`);
+  return response?.data ?? null;
 }

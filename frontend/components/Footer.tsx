@@ -4,8 +4,8 @@ const COLS: [string, [string, string][]][] = [
   ["Explore", [["Markets", "/markets"], ["Coins", "/coins"], ["News", "/news"], ["Analysis", "/analysis"], ["Research", "/research"]]],
   ["Resources", [["Learn", "/learn"], ["Guides", "/guides"], ["Glossary", "/glossary"], ["Status", "/status"], ["Search", "/search"]]],
   ["Tools", [["Watchlist", "/watchlist"], ["Newsletter", "/newsletter"], ["Categories", "/categories"], ["Tags", "/tags"]]],
-  ["Company", [["About", "/about"], ["Contact", "/contact"], ["Editorial Policy", "/editorial-policy"], ["Corrections", "/corrections-policy"]]],
-  ["Legal", [["Privacy", "/privacy"], ["Terms", "/terms"], ["Disclaimer", "/disclaimer"], ["Risk Disclosure", "/risk-disclosure"]]],
+  ["Company", [["About", "/about"], ["Publisher", "/publisher"], ["Contact", "/contact"], ["Editorial Policy", "/editorial-policy"], ["Sources", "/sources-methodology"], ["Corrections", "/corrections-policy"]]],
+  ["Legal", [["Privacy", "/privacy"], ["Cookies", "/cookie-policy"], ["Terms", "/terms"], ["Disclaimer", "/disclaimer"], ["Risk Disclosure", "/risk-disclosure"], ["Copyright / DMCA", "/copyright-dmca"], ["Accessibility", "/accessibility"]]],
 ];
 
 export default function Footer() {

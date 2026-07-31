@@ -7,8 +7,9 @@ const pageRoutes = [
   "/markets",
   "/crypto/BTC",
   "/news",
-  "/news/bitcoin-etf-flows-institutional-demand",
   "/search?q=bitcoin",
+  "/sources-methodology",
+  "/cookie-policy",
   "/watchlist",
   "/login",
   "/admin",
@@ -41,6 +42,11 @@ test("production preview routes, SEO lock and responsive layouts", async ({ page
     const response = await request.get(route);
     expect(response.status(), route).toBe(200);
   }
+  expect((await request.get("/ads.txt")).status()).toBe(404);
+  const legacyFixture = await request.get("/news/bitcoin-etf-flows-institutional-demand");
+  expect(legacyFixture.status()).toBe(200);
+  expect(legacyFixture.url()).toBe("http://127.0.0.1:3100/news");
+  expect((await request.get("/definitely-not-a-real-page")).status()).toBe(404);
 
   const homeResponse = await page.goto("/");
   expect(homeResponse?.headers()["content-security-policy"]).toContain("default-src 'self'");
@@ -55,6 +61,8 @@ test("production preview routes, SEO lock and responsive layouts", async ({ page
   expect(robots).toContain("Disallow: /");
   const newsSitemap = await (await request.get("/news-sitemap.xml")).text();
   expect(newsSitemap).not.toContain("<news:news>");
+  const homeHtml = await (await request.get("/")).text();
+  expect(homeHtml).not.toContain("bitcoin-etf-flows-institutional-demand");
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   const blockers = accessibility.violations
@@ -103,9 +111,9 @@ test("verified admin session persists across reload and logout clears protected 
   });
   await page.goto("/admin");
   await expect(page.getByText("Operations dashboard")).toBeVisible();
-  await expect(page.getByText("NORMAL")).toBeVisible();
+  await expect(page.getByText("NORMAL", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("NORMAL")).toBeVisible();
+  await expect(page.getByText("NORMAL", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
   await page.goto("/admin");
   await expect(page.getByText("Sign in to view operations.")).toBeVisible();
