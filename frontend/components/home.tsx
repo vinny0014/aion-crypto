@@ -80,9 +80,9 @@ export function HeroRow({ ticker, articles }: { ticker: Wrapped<TickerCoin[]>; a
             <span className="rounded-md bg-accent-red px-2 py-0.5 text-[11px] font-bold uppercase text-white">Top Story</span>
             {hero.related_asset && <span className="chip">{hero.related_asset}</span>}
           </div>
-          <h1 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
+          <h2 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
             <Link href={`/news/${hero.slug}`} className="hover:text-primary-glow">{hero.title}</Link>
-          </h1>
+          </h2>
           <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-dim">{hero.summary}</p>
           <div className="mt-4 flex items-center gap-3 text-[12px] text-ink-dim">
             <span>{hero.author}</span>·<time dateTime={hero.published_at}>{new Date(hero.published_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC</time>
@@ -93,7 +93,7 @@ export function HeroRow({ ticker, articles }: { ticker: Wrapped<TickerCoin[]>; a
           >
             Read more
           </Link>
-        </div> : <div className="relative"><span className="chip">Editorial desk</span><h1 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">Verified coverage is being prepared</h1><p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-dim">AION Crypto publishes database-backed articles only after source, originality and compliance checks. Development fixtures are not shown as news.</p><Link href="/sources-methodology" className="mt-5 inline-block text-sm text-primary-glow">See our methodology</Link></div>}
+        </div> : <div className="relative"><span className="chip">Editorial desk</span><h2 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">Verified coverage is being prepared</h2><p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-dim">AION Crypto publishes database-backed articles only after source, originality and compliance checks. Development fixtures are not shown as news.</p><Link href="/sources-methodology" className="mt-5 inline-block text-sm text-primary-glow">See our methodology</Link></div>}
       </article>
 
       {/* Latest news */}
