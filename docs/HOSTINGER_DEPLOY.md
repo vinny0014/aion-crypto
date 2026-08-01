@@ -8,7 +8,7 @@ Frontend contract:
 - Install/build: `npm ci && npm run build`.
 - Start: `npm run start` (`PORT` is read by the standalone Next.js server).
 - Health: `GET /health`.
-- Preview keeps `NEXT_PUBLIC_ENABLE_INDEXING=false`, uses Hostinger's temporary domain, and does not attach `aioncrypto.cloud`.
+- Preview sets `NEXT_PUBLIC_SITE_URL` to Hostinger's temporary domain, which keeps it non-indexable automatically, and does not attach `aioncrypto.cloud`.
 
 Backend contract:
 

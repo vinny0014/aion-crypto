@@ -21,7 +21,6 @@ Template: `.env.example` at repo root (copy into `backend/.env` and frontend env
 | FRONTEND_URL / CORS_ORIGINS | backend | local / empty | production and temporary preview browser origins |
 | NEXT_PUBLIC_BACKEND_URL | frontend | unset | public Render API URL; unset produces an honest offline state |
 | NEXT_PUBLIC_SITE_URL | frontend | prod: https://aioncrypto.cloud · dev: http://localhost:3000 | canonical/OG/sitemap/RSS base |
-| NEXT_PUBLIC_ENABLE_INDEXING | frontend | false | keep false for every preview; enable only at approved launch |
 | PUBLIC_SITE_URL | infra | https://aioncrypto.cloud | official production domain |
 | CANONICAL_URL | infra | https://aioncrypto.cloud | must equal PUBLIC_SITE_URL |
 | NEXT_PUBLIC_GA_MEASUREMENT_ID | frontend | empty | analytics stays OFF while empty — never use a fake ID |
@@ -37,5 +36,7 @@ Template: `.env.example` at repo root (copy into `backend/.env` and frontend env
 The single official production domain is **https://aioncrypto.cloud**. It is used for
 canonical URLs, Open Graph, Twitter Cards, Schema.org, sitemap.xml, news-sitemap.xml,
 image-sitemap.xml, robots.txt and RSS. Development and preview environments must set
-`NEXT_PUBLIC_SITE_URL` explicitly; production builds fall back to the official domain.
-Never use another project's subdomain or a temporary hardcoded URL.
+`NEXT_PUBLIC_SITE_URL` explicitly. Indexability is derived from that value: only
+`https://aioncrypto.cloud` is indexable, while localhost and preview domains are
+blocked automatically. Production builds fall back to the official domain. Never
+use another project's subdomain or a temporary hardcoded URL.
