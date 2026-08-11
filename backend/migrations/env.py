@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 from app.config import get_settings
 from app.db import Base
@@ -34,6 +34,13 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        # Render can briefly overlap two startup processes during a deploy.
+        # Acquire the transaction-scoped lock on the *same connection* Alembic
+        # uses for DDL, so a second process waits instead of deadlocking on
+        # ALTER TABLE statements. SQLite and other local engines do not expose
+        # PostgreSQL advisory locks.
+        if connection.dialect.name == "postgresql":
+            connection.execute(text("SELECT pg_advisory_xact_lock(726044021)"))
         context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
         with context.begin_transaction():
             context.run_migrations()
