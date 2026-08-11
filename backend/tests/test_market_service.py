@@ -40,6 +40,15 @@ GECKO_GLOBAL = {
     }
 }
 
+PAPRIKA_GLOBAL = {
+    "market_cap_usd": 2.47e12,
+    "volume_24h_usd": 8.2e10,
+    "bitcoin_dominance_percentage": 52.0,
+    "cryptocurrencies_number": 12345,
+    "market_cap_change_24h": -0.5,
+    "last_updated": 1720000010,
+}
+
 
 def make_client(routes: dict[str, object], fail_urls: set[str] = frozenset()):
     def handler(request: httpx.Request) -> httpx.Response:
@@ -119,6 +128,18 @@ def test_global_metrics(tmp_path):
     assert result["data"]["btc_dominance_pct"] == pytest.approx(52.3)
     assert result["data"]["markets"] == 900
     assert result["data"]["last_updated"] == 1720000000
+
+
+def test_global_metrics_fall_back_without_inventing_eth_dominance(tmp_path):
+    svc = svc_with(
+        {"https://api.coinpaprika.com/v1/global": PAPRIKA_GLOBAL},
+        fail_urls={"https://api.coingecko.com/api/v3/global"},
+        tmp_path=tmp_path,
+    )
+    result = asyncio.run(svc.get_global())
+    assert result["source"] == "coinpaprika"
+    assert result["data"]["btc_dominance_pct"] == pytest.approx(52.0)
+    assert result["data"]["eth_dominance_pct"] is None
 
 
 def test_unknown_coin_is_not_found(tmp_path):

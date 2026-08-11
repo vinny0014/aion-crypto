@@ -15,7 +15,7 @@ depends_on = None
 def upgrade() -> None:
     op.create_table("scheduler_runs",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("run_key", sa.String(80), nullable=False, unique=True),
+        sa.Column("run_key", sa.String(80), nullable=False),
         sa.Column("status", sa.String(20), nullable=False, server_default="running"),
         sa.Column("trigger", sa.String(20), nullable=False, server_default="scheduled"),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
@@ -27,7 +27,7 @@ def upgrade() -> None:
         sa.Column("published", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("last_error", sa.Text(), nullable=False, server_default=""),
     )
-    op.create_index("ix_scheduler_runs_run_key", "scheduler_runs", ["run_key"])
+    op.create_index("ix_scheduler_runs_run_key", "scheduler_runs", ["run_key"], unique=True)
     op.create_index("ix_scheduler_runs_status", "scheduler_runs", ["status"])
     op.execute("ALTER TABLE public.scheduler_runs ENABLE ROW LEVEL SECURITY")
     op.execute("REVOKE ALL ON TABLE public.scheduler_runs FROM PUBLIC")

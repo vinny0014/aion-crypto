@@ -237,7 +237,23 @@ class MarketService:
                 "last_updated": int(d.get("updated_at") or 0) or None,
             }
 
-        return await self._resolve(key, [("coingecko", from_coingecko)])
+        async def from_coinpaprika() -> dict:
+            # CoinPaprika's public global endpoint does not publish ETH
+            # dominance.  Keep that field explicitly null instead of making a
+            # derived estimate appear as provider data.
+            raw = await self._fetch_json(f"{self.settings.coinpaprika_base_url}/global")
+            return {
+                "market_cap_usd": float(raw["market_cap_usd"]),
+                "volume_24h_usd": float(raw["volume_24h_usd"]),
+                "btc_dominance_pct": float(raw["bitcoin_dominance_percentage"]),
+                "eth_dominance_pct": None,
+                "market_cap_change_24h_pct": float(raw.get("market_cap_change_24h") or 0.0),
+                "active_cryptocurrencies": int(raw.get("cryptocurrencies_number") or 0),
+                "markets": None,
+                "last_updated": int(raw.get("last_updated") or 0) or None,
+            }
+
+        return await self._resolve(key, [("coingecko", from_coingecko), ("coinpaprika", from_coinpaprika)])
 
     async def get_coin(self, symbol: str) -> dict:
         symbol = symbol.upper()

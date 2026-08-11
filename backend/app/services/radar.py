@@ -19,6 +19,28 @@ MAX_FEED_BYTES = 2_000_000
 MAX_ITEMS = 25
 
 
+def _classify(title: str, summary: str) -> tuple[str, str]:
+    """Classify only from the public feed metadata; do not infer facts."""
+    text = f"{title} {summary}".lower()
+    if "bitcoin" in text or " btc" in text:
+        return "Bitcoin", "BTC"
+    if "ethereum" in text or " eth" in text:
+        return "Ethereum", "ETH"
+    if "xrp" in text or "ripple" in text:
+        return "XRP", "XRP"
+    if "solana" in text or " sol" in text:
+        return "Altcoins", "SOL"
+    if "etf" in text:
+        return "ETFs", ""
+    if any(term in text for term in ("defi", "dex", "lending", "stablecoin")):
+        return "DeFi", ""
+    if any(term in text for term in ("sec", "fca", "mica", "regulat", "law", "policy")):
+        return "Regulation", ""
+    if any(term in text for term in ("hack", "exploit", "attack", "vulnerab", "drain")):
+        return "Security", ""
+    return "Market Analysis", ""
+
+
 def _public_host(url: str) -> bool:
     if not valid_public_url(url):
         return False
@@ -84,15 +106,17 @@ def scan_source(db: Session, source_id: int) -> dict:
                         break
             if len(title) < 12 or not valid_public_url(link):
                 continue
+            category, related_asset = _classify(title, summary)
             before = db.query(Article).count()
             article = pipeline.create_detected(
                 title=title,
                 summary=summary,
                 body="",
-                category="Market Analysis",
+                category=category,
                 priority="normal",
                 source_urls=[link],
                 source_name=source.name,
+                related_asset=related_asset,
                 source_published_at=_published_at(node),
             )
             after = db.query(Article).count()

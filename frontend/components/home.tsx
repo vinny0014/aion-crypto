@@ -32,7 +32,7 @@ export function GlobalMetricsBar({ g }: { g: Wrapped<GlobalMetrics> }) {
         ["Market Cap", fmtUsd(d.market_cap_usd, true), d.market_cap_change_24h_pct],
         ["24h Volume", fmtUsd(d.volume_24h_usd, true), null],
         ["BTC Dominance", `${d.btc_dominance_pct.toFixed(1)}%`, null],
-        ["ETH Dominance", `${d.eth_dominance_pct.toFixed(1)}%`, null],
+        ...(d.eth_dominance_pct == null ? [] : [["ETH Dominance", `${d.eth_dominance_pct.toFixed(1)}%`, null] as [string, string, number | null]]),
         ["Active Cryptos", fmtNum(d.active_cryptocurrencies), null],
       ]
     : [];
@@ -199,7 +199,7 @@ export function MarketRow({
       <div className="grid gap-4">
         <div className="card p-4">
           <SectionTitle href="/markets">Market Dominance</SectionTitle>
-          {dom ? (
+          {dom && dom.eth_dominance_pct != null ? (
             <div className="flex items-center gap-4">
               <Donut
                 slices={[

@@ -76,7 +76,7 @@ export type GlobalMetrics = {
   market_cap_usd: number;
   volume_24h_usd: number;
   btc_dominance_pct: number;
-  eth_dominance_pct: number;
+  eth_dominance_pct: number | null;
   market_cap_change_24h_pct: number;
   active_cryptocurrencies: number;
 };
