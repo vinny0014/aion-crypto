@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     ecosystem_known_cost_brl: float = 250.0
     automatic_publish_enabled: bool = False
     editorial_minimum_confidence: float = 0.82
+    scheduler_enabled: bool = False
+    scheduler_interval_minutes: int = 60
+    scheduler_token: str = ""
+    scheduler_max_sources_per_run: int = 10
 
     last_valid_store_path: str = "data/last_valid.json"
     rate_limit_public_per_minute: int = 120
@@ -59,6 +63,8 @@ class Settings(BaseSettings):
             raise ValueError("production DATABASE_URL must use PostgreSQL")
         if self.public_site_url.rstrip("/") != "https://aioncrypto.cloud":
             raise ValueError("PUBLIC_SITE_URL must match the official canonical domain")
+        if self.scheduler_enabled and len(self.scheduler_token) < 32:
+            raise ValueError("SCHEDULER_TOKEN must contain at least 32 characters when the scheduler is enabled")
 
         frontend = urlparse(self.frontend_url)
         if frontend.scheme != "https" or frontend.hostname in {"localhost", "127.0.0.1", None}:

@@ -100,6 +100,23 @@ class Task(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class SchedulerRun(Base):
+    """Auditable scheduler lease and outcome; only one run may be active."""
+    __tablename__ = "scheduler_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_key: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="running", index=True)
+    trigger: Mapped[str] = mapped_column(String(20), default="scheduled")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sources_scanned: Mapped[int] = mapped_column(Integer, default=0)
+    items_seen: Mapped[int] = mapped_column(Integer, default=0)
+    articles_detected: Mapped[int] = mapped_column(Integer, default=0)
+    duplicates_rejected: Mapped[int] = mapped_column(Integer, default=0)
+    published: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+
+
 class CostLedgerEntry(Base):
     __tablename__ = "cost_ledger"
     id: Mapped[int] = mapped_column(primary_key=True)

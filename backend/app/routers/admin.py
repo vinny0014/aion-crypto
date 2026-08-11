@@ -7,6 +7,7 @@ from app.db import get_db
 from app.models import Article, Incident, SocialOutbox, Source, Subscriber, Task
 from app.pipeline.registry import AGENTS
 from app.routers.auth import require_role
+from app.services.scheduler import scheduler_status
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -21,7 +22,7 @@ def overview(db: Session = Depends(get_db), _=Depends(require_role("admin", "edi
         "tasks": {status: count for status, count in task_rows},
         "open_incidents": open_incidents,
         "cost_guard": CostGuard(db).summary(),
-        "scheduler": {"status": "not_configured"},
+        "scheduler": scheduler_status(db),
         "agents": {"status": "connected", "registered": list(AGENTS)},
         "content": {
             "published": db.execute(select(func.count(Article.id)).where(Article.status.in_(("published", "updated")))).scalar_one(),

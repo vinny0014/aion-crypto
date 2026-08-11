@@ -15,9 +15,8 @@ from app.config import get_settings
 
 EXPECTED_TABLES = {
     "articles", "cost_ledger", "incidents", "sources", "subscribers",
-    "tasks", "users", "watchlist_items", "refresh_sessions", "alembic_version",
-    "subscriber_preferences", "editorial_events", "social_outbox",
-    "breaking_campaigns",
+    "tasks", "users", "watchlist_items", "refresh_sessions", "alembic_version", "subscriber_preferences",
+    "editorial_events", "social_outbox", "breaking_campaigns", "scheduler_runs",
 }
 
 
@@ -29,8 +28,9 @@ def main() -> None:
     if not get_settings().database_url.startswith(("postgresql://", "postgresql+psycopg://")):
         raise SystemExit("validate_migrations requires PostgreSQL")
 
-    # Supabase supplies these roles. The disposable CI PostgreSQL service does
-    # not, so create NOLOGIN stand-ins solely to test privilege revocation.
+    # Supabase supplies these roles.  The disposable CI PostgreSQL service does
+    # not, so create NOLOGIN stand-ins solely to prove that the migration revokes
+    # their Data API privileges.  Production roles are never created here.
     bootstrap_engine = create_engine(get_settings().database_url)
     try:
         with bootstrap_engine.begin() as connection:
@@ -84,7 +84,7 @@ def main() -> None:
             raise SystemExit(f"RLS disabled for: {', '.join(sorted(rls_disabled))}")
         if public_access:
             raise SystemExit(
-                "Supabase Data API roles retain DML access to: "
+                "Supabase Data API roles retain SELECT access to: "
                 + ", ".join(sorted(public_access))
             )
     finally:

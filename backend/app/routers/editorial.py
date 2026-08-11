@@ -17,6 +17,7 @@ from app.models import Article, BreakingCampaign, SocialOutbox, Source, Subscrib
 from app.pipeline.editorial import CATEGORIES, PRIORITIES, EditorialPipeline
 from app.pipeline.registry import AGENTS, build_commander
 from app.routers.auth import require_role
+from app.services.scheduler import scheduler_status
 
 router = APIRouter(prefix="/api/v1", tags=["editorial"])
 PREFERENCES = {"Breaking News", "Daily Summary", "Bitcoin", "Ethereum", "XRP", "Altcoins", "ETFs", "Regulation", "Security"}
@@ -163,7 +164,7 @@ def editorial_dashboard(db: Session = Depends(get_db), _=Depends(require_role("a
     return {
         **pipeline.metrics(), "daily_candidates": pipeline.daily_candidates(),
         "agents": {"status": "connected", "registered": list(AGENTS)},
-        "scheduler": {"status": "not_configured"},
+        "scheduler": scheduler_status(db),
         "published_source_records": source_count,
         "analytics": {"status": "available_internal", "google_analytics": "not_connected", "search_console": "not_connected"},
     }

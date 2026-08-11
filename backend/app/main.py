@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.db import init_db
 from app.middleware import RateLimitMiddleware
-from app.routers import admin, auth, cost, editorial, health, market, watchlist
+from app.routers import admin, auth, cost, editorial, health, market, scheduler, watchlist
 from app.services.market import get_market_service
 
 
@@ -51,3 +51,4 @@ app.include_router(watchlist.router)
 app.include_router(cost.router)
 app.include_router(admin.router)
 app.include_router(editorial.router)
+app.include_router(scheduler.router)
