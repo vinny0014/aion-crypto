@@ -26,8 +26,8 @@ SOURCES = (
 def upgrade() -> None:
     for name, url, kind in SOURCES:
         op.execute(
-            "INSERT INTO public.sources (name, url, kind, trusted, active) "
-            f"VALUES ({name!r}, {url!r}, {kind!r}, true, true) "
+            "INSERT INTO public.sources (name, url, kind, trusted, active, created_at) "
+            f"VALUES ({name!r}, {url!r}, {kind!r}, true, true, CURRENT_TIMESTAMP) "
             "ON CONFLICT (url) DO UPDATE SET active = true, trusted = true"
         )
 
