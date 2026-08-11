@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCoin, getKlines } from "../../../lib/api";
+import { getCoin, getKlines, getPublishedArticles } from "../../../lib/api";
 import { AreaChart, CandleChart } from "../../../components/charts";
 import { Delta, SourceTag } from "../../../components/ui";
 import { fmtNum, fmtUsd } from "../../../lib/format";
-import { FIXTURE_ARTICLES } from "../../../lib/fixtures";
 
 export const revalidate = 60;
 
@@ -24,10 +23,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CoinPage({ params }: Props) {
   const { symbol } = await params;
   const sym = symbol.toUpperCase();
-  const [coin, klines] = await Promise.all([getCoin(sym), getKlines(sym, "1h", 168)]);
+  const [coin, klines, published] = await Promise.all([getCoin(sym), getKlines(sym, "1h", 168), getPublishedArticles()]);
   if (coin.status === "not_found") notFound();
   const d = coin.data!;
-  const related = FIXTURE_ARTICLES.filter((a) => a.tag === sym || a.category === "Markets").slice(0, 3);
+  const related = published.filter((a) => a.related_asset === sym || a.category === "Market Analysis").slice(0, 3);
 
   const stats: [string, string][] = [
     ["Market Cap", fmtUsd(d.market_cap_usd, true)],
@@ -106,6 +105,7 @@ export default async function CoinPage({ params }: Props) {
                 </li>
               ))}
             </ul>
+            {!related.length && <p className="text-[13px] text-ink-dim">No verified related coverage is published yet.</p>}
           </section>
           <p className="text-[11.5px] leading-relaxed text-ink-dim">
             Market data is provided for information only and may be delayed. Nothing on this page is investment advice. Crypto assets are highly volatile.

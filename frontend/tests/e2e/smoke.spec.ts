@@ -7,8 +7,9 @@ const pageRoutes = [
   "/markets",
   "/crypto/BTC",
   "/news",
-  "/news/bitcoin-etf-flows-institutional-demand",
   "/search?q=bitcoin",
+  "/sources-methodology",
+  "/cookie-policy",
   "/watchlist",
   "/login",
   "/admin",
@@ -23,7 +24,7 @@ const documentRoutes = [
   "/rss.xml",
 ];
 
-test("production preview routes, SEO lock and responsive layouts", async ({ page, request }) => {
+test("production routes, SEO identity and responsive layouts", async ({ page, request }) => {
   const errors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
@@ -41,20 +42,49 @@ test("production preview routes, SEO lock and responsive layouts", async ({ page
     const response = await request.get(route);
     expect(response.status(), route).toBe(200);
   }
+  expect((await request.get("/ads.txt")).status()).toBe(404);
+  const legacyFixture = await request.get("/news/bitcoin-etf-flows-institutional-demand");
+  expect(legacyFixture.status()).toBe(200);
+  expect(legacyFixture.url()).toBe("http://127.0.0.1:3100/news");
+  expect((await request.get("/definitely-not-a-real-page")).status()).toBe(404);
 
   const homeResponse = await page.goto("/");
   expect(homeResponse?.headers()["content-security-policy"]).toContain("default-src 'self'");
-  await expect(page).toHaveTitle(/AION Crypto/);
+  await expect(page).toHaveTitle("AION Crypto — Live Crypto Prices, News and Market Analysis");
   await expect(page.locator('html[lang="en"]')).toHaveCount(1);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://aioncrypto.cloud");
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    "Track Bitcoin, Ethereum, XRP and leading cryptocurrencies with live prices, breaking news, market analysis and educational content.",
+  );
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /index, follow/);
+  await expect(page.getByRole("heading", { level: 1, name: "AION Crypto Market Intelligence" })).toBeVisible();
+  await expect(page.getByText(/live crypto prices for Bitcoin, Ethereum, XRP/i)).toBeVisible();
   const html = await page.content();
   expect(html).not.toMatch(/aion[ -]?news|wordbet|vercel\.app/i);
 
+  const jsonLd = await page.locator('script[type="application/ld+json"]').evaluateAll((scripts) =>
+    scripts.map((script) => JSON.parse(script.textContent || "{}")),
+  );
+  const website = jsonLd.find((entry) => entry["@type"] === "WebSite");
+  const organization = jsonLd.find((entry) => entry["@type"] === "Organization");
+  const webPage = jsonLd.find((entry) => entry["@type"] === "WebPage");
+  expect(website).toMatchObject({ name: "AION Crypto", alternateName: "AION Crypto Market Intelligence", url: "https://aioncrypto.cloud/" });
+  expect(organization).toMatchObject({ name: "AION Crypto", url: "https://aioncrypto.cloud/" });
+  expect(organization.logo.url).toBe("https://aioncrypto.cloud/aion-crypto-logo.svg");
+  expect(webPage).toMatchObject({ name: "AION Crypto — Live Crypto Prices, News and Market Analysis", url: "https://aioncrypto.cloud/" });
+
   const robots = await (await request.get("/robots.txt")).text();
-  expect(robots).toContain("Disallow: /");
+  expect(robots).toContain("Allow: /");
+  expect(robots).toContain("Disallow: /admin");
+  expect(robots).toContain("Disallow: /login");
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  expect(sitemap).toContain("<loc>https://aioncrypto.cloud</loc>");
+  expect((await request.get("/aion-crypto-logo.svg")).status()).toBe(200);
   const newsSitemap = await (await request.get("/news-sitemap.xml")).text();
   expect(newsSitemap).not.toContain("<news:news>");
+  const homeHtml = await (await request.get("/")).text();
+  expect(homeHtml).not.toContain("bitcoin-etf-flows-institutional-demand");
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   const blockers = accessibility.violations
@@ -103,9 +133,9 @@ test("verified admin session persists across reload and logout clears protected 
   });
   await page.goto("/admin");
   await expect(page.getByText("Operations dashboard")).toBeVisible();
-  await expect(page.getByText("NORMAL")).toBeVisible();
+  await expect(page.getByText("NORMAL", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("NORMAL")).toBeVisible();
+  await expect(page.getByText("NORMAL", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
   await page.goto("/admin");
   await expect(page.getByText("Sign in to view operations.")).toBeVisible();

@@ -27,9 +27,11 @@ def main() -> None:
         'export const APP_NAME = "AION Crypto";': site,
         'export const APP_SHORT_NAME = "AIONCRYPTO";': site,
         'export const TAGLINE = "Crypto Market Intelligence";': site,
+        'export const SITE_TITLE = "AION Crypto — Live Crypto Prices, News and Market Analysis";': site,
+        '"Track Bitcoin, Ethereum, XRP and leading cryptocurrencies with live prices, breaking news, market analysis and educational content.";': site,
         f'export const PRODUCTION_URL = "{OFFICIAL_URL}";': site,
         "REPOSITORY=vinny0014/aion-crypto": env,
-        "NEXT_PUBLIC_ENABLE_INDEXING=false": env,
+        "export const INDEXING_ENABLED = SITE_URL === PRODUCTION_URL;": site,
         '"next": "15.5.21"': package,
     }
     for needle, body in required.items():

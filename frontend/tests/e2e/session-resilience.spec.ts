@@ -48,7 +48,7 @@ test("cold start shows a waking state, keeps the tokens and recovers without a n
   // a valid session must never be reported as signed out
   await expect(page.getByText("Sign in to view operations.")).toHaveCount(0);
 
-  await expect(page.getByText("NORMAL")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("NORMAL", { exact: true })).toBeVisible({ timeout: 30_000 });
   expect(attempts).toBeGreaterThan(2);
   expect(await storedTokens(page)).toEqual(["access", "refresh"]);
 });

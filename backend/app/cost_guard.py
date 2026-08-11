@@ -111,11 +111,18 @@ class CostGuard:
 
     def summary(self) -> dict:
         spend = self.month_spend_usd()
+        settings = get_settings()
+        ecosystem_headroom = max(settings.ecosystem_monthly_limit_brl - settings.ecosystem_known_cost_brl, 0.0)
         return {
             "month_spend_usd": round(spend, 4),
             "monthly_limit_usd": self.limit,
             "band": self.band().value,
             "remaining_usd": round(max(self.limit - spend, 0.0), 4),
+            "ecosystem_known_cost_brl": settings.ecosystem_known_cost_brl,
+            "ecosystem_limit_brl": settings.ecosystem_monthly_limit_brl,
+            "ecosystem_headroom_brl": round(ecosystem_headroom, 2),
+            "paid_integrations_default": "disabled",
+            "budget_risk": "blocked" if settings.ecosystem_known_cost_brl >= settings.ecosystem_monthly_limit_brl else "within_limit",
         }
 
 

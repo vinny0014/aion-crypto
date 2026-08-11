@@ -62,7 +62,8 @@ def test_login_flow_and_role_protection(client):
 
     overview = client.get("/api/v1/admin/overview", headers={"Authorization": f"Bearer {tokens['access_token']}"})
     assert overview.status_code == 200
-    assert overview.json()["agents"]["status"] == "not_connected"
+    assert overview.json()["agents"]["status"] == "connected"
+    assert "radar" in overview.json()["agents"]["registered"]
 
     anon = client.get("/api/v1/cost/summary")
     assert anon.status_code == 401
@@ -80,6 +81,39 @@ def test_registry_endpoint(client):
     assert r.status_code == 200
     symbols = [c["symbol"] for c in r.json()["data"]]
     assert "BTC" in symbols and "ETH" in symbols
+
+
+def test_audience_consent_honeypot_and_confirmation(client):
+    rejected = client.post("/api/v1/audience/subscribe", json={
+        "email": "reader@example.com", "consent": False, "preferences": ["Bitcoin"],
+    })
+    assert rejected.status_code == 422
+
+    trapped = client.post("/api/v1/audience/subscribe", json={
+        "email": "bot@example.com", "consent": True, "preferences": ["Bitcoin"],
+        "website": "https://spam.example",
+    })
+    assert trapped.status_code == 202
+
+    response = client.post("/api/v1/audience/subscribe", json={
+        "email": "Reader@Example.com", "consent": True,
+        "preferences": ["Breaking News", "Bitcoin"], "source": "test",
+    })
+    assert response.status_code == 202
+    token = response.json()["development_confirmation_token"]
+
+    from app.db import get_sessionmaker
+    from app.models import Subscriber, SubscriberPreference
+
+    session = get_sessionmaker()()
+    rows = session.query(Subscriber).all()
+    assert len(rows) == 1
+    assert rows[0].email == "reader@example.com"
+    assert rows[0].confirmation_token_hash and token not in rows[0].confirmation_token_hash
+    assert session.query(SubscriberPreference).count() == 2
+    session.close()
+
+    assert client.post(f"/api/v1/audience/confirm/{token}").status_code == 200
 
 
 def test_watchlist_is_persistent_unique_and_isolated(client):

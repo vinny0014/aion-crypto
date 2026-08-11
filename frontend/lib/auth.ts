@@ -143,7 +143,8 @@ function emitProgress(state: SessionState) {
 
 async function runResolveSession(maxRetries: number): Promise<SessionState> {
   if (!BACKEND) return { status: "backend_unreachable" };
-  if (!getTokens()) return { status: "signed_out" };
+  const hadTokensAtStart = Boolean(getTokens());
+  if (!hadTokensAtStart) return { status: "signed_out" };
 
   for (let attempt = 0; ; attempt += 1) {
     try {
@@ -158,7 +159,11 @@ async function runResolveSession(maxRetries: number): Promise<SessionState> {
       // Anything that is not a network failure (e.g. tokens vanished mid-flight)
       // is resolved from storage, still without clearing anything here.
       if (!(error instanceof NetworkError)) {
-        return getTokens() ? { status: "backend_unreachable" } : { status: "signed_out" };
+        // Header and protected pages may check the same session concurrently.
+        // If one caller proves the refresh token invalid and clears storage,
+        // the other must report the same invalid-session outcome instead of
+        // incorrectly downgrading it to an ordinary signed-out state.
+        return getTokens() ? { status: "backend_unreachable" } : { status: "session_invalid" };
       }
     }
     // A concurrent refresh may have cleared the session on a real 401.

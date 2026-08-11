@@ -15,8 +15,8 @@ export default function Page() {
         <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Step-by-step guides on wallets, self-custody, reading charts, evaluating projects, and understanding on-chain data. Each guide is dated and reviewed periodically.</p>
       </section>
       <section className="mt-6">
-        <h2 className="text-[15px] font-semibold">Featured guide: Self-custody basics</h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Most self-custody losses come from operational mistakes, not exotic hacks. Our security checklist covers seed phrase handling, hardware wallets, and transaction verification. Read it in News → 'Self-Custody Basics: A Practical Security Checklist'.</p>
+        <h2 className="text-[15px] font-semibold">Publication standard</h2>
+        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">A guide is listed only after it contains complete, sourced and dated material. Development outlines and fixture articles are not presented as published guidance.</p>
       </section>
     </div>
   );

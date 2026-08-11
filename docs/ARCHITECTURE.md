@@ -27,7 +27,10 @@ The UI renders a provenance badge on every data block. Zeros or invented values 
 - `app/middleware.py` — process-local API/login rate-limit safety layer
 - `app/cache.py` — TTL cache + atomic last-valid JSON store
 - `app/cost_guard.py` — monthly paid-API ceiling with bands NORMAL/ECONOMY/ESSENTIAL_ONLY/BLOCKED
-- `app/pipeline/commander.py` — persistent task queue: claim/lock, one attempt per cycle, exponential-backoff-ready retries, dead-letter, stuck-task recovery, per-cycle limit
+- `app/pipeline/commander.py` — persistent task queue: claim/lock, one attempt per cycle, retries, dead-letter, stuck-task recovery and per-cycle limit
+- `app/pipeline/editorial.py` + `registry.py` — nine bounded stages inside the existing worker, with explicit article states, verification/originality/compliance gates and social outbox; no new service or microservice
+- `app/services/radar.py` — opt-in RSS/Atom discovery with public-HTTPS, SSRF, redirect, size and timeout controls
+- `app/routers/editorial.py` — protected Breaking News intake, bounded worker trigger, source management, public article API and audience consent/export
 - `app/security.py` + `app/routers/auth.py` — bcrypt + JWT access/refresh, role guard (admin/editor/viewer)
 - `app/models.py` — users, sources, articles, tasks, cost ledger, subscribers, watchlist, incidents
 - `migrations/` — Alembic baseline used instead of production `create_all`
@@ -38,5 +41,6 @@ The UI renders a provenance badge on every data block. Zeros or invented values 
 - `components/home.tsx` — homepage sections mirroring the mockup structure/density
 - Route set: home, /markets, /crypto/[symbol], /news(+slug), /search, /watchlist, /login, learn/guides/glossary/analysis/research, full legal/policy set, /status, 404/500, sitemap.xml, robots.txt
 
-## Planned next (see WORK_HANDOFF.md)
-Discovery/Content/Verification/Image agents on top of Commander, scheduler/worker entrypoints, Monitor Recovery loop, newsletter double opt-in delivery, real CMS integration and analytics wiring. The operations dashboard reports these connections as unavailable until they exist.
+## Runtime operation
+
+Source scans are queued explicitly from the authenticated admin API and processed by the existing Commander cycle. No new scheduler, worker, service or recurring infrastructure was added. Email delivery, social OAuth and automatic external distribution remain disabled.

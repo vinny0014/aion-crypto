@@ -1,6 +1,5 @@
 import Link from "next/link";
-import type { GlobalMetrics, Kline, TickerCoin, Wrapped } from "../lib/api";
-import { FIXTURE_ARTICLES, FIXTURE_INSIGHT } from "../lib/fixtures";
+import type { GlobalMetrics, Kline, PublishedArticle, TickerCoin, Wrapped } from "../lib/api";
 import { fmtNum, fmtPct, fmtUsd } from "../lib/format";
 import { AreaChart, Donut, FearGreedGauge, Sparkline } from "./charts";
 import { CoinDot, Delta, SectionTitle, SourceTag, Unavailable } from "./ui";
@@ -33,7 +32,7 @@ export function GlobalMetricsBar({ g }: { g: Wrapped<GlobalMetrics> }) {
         ["Market Cap", fmtUsd(d.market_cap_usd, true), d.market_cap_change_24h_pct],
         ["24h Volume", fmtUsd(d.volume_24h_usd, true), null],
         ["BTC Dominance", `${d.btc_dominance_pct.toFixed(1)}%`, null],
-        ["ETH Dominance", `${d.eth_dominance_pct.toFixed(1)}%`, null],
+        ...(d.eth_dominance_pct == null ? [] : [["ETH Dominance", `${d.eth_dominance_pct.toFixed(1)}%`, null] as [string, string, number | null]]),
         ["Active Cryptos", fmtNum(d.active_cryptocurrencies), null],
       ]
     : [];
@@ -60,14 +59,10 @@ export function GlobalMetricsBar({ g }: { g: Wrapped<GlobalMetrics> }) {
 }
 
 // ── 3. Hero + Latest News + Breadth column ───────────────────────
-function heroArticle() {
-  return FIXTURE_ARTICLES[0];
-}
-
-export function HeroRow({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
-  const hero = heroArticle();
-  const latest = FIXTURE_ARTICLES.slice(1, 5);
-  const mostRead = [...FIXTURE_ARTICLES].sort((a, b) => a.hoursAgo - b.hoursAgo).slice(0, 5);
+export function HeroRow({ ticker, articles }: { ticker: Wrapped<TickerCoin[]>; articles: PublishedArticle[] }) {
+  const hero = articles[0];
+  const latest = articles.slice(1, 5);
+  const moreCoverage = articles.slice(0, 5);
   const coins = ticker.data ?? [];
   const upShare = coins.length ? Math.round((coins.filter((c) => c.change_24h_pct >= 0).length / coins.length) * 100) : null;
 
@@ -80,17 +75,17 @@ export function HeroRow({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
           className="pointer-events-none absolute inset-0 opacity-60"
           style={{ background: "radial-gradient(600px 260px at 85% 20%, rgba(124,58,237,.35), transparent 60%), radial-gradient(400px 200px at 10% 90%, rgba(34,211,238,.15), transparent 60%)" }}
         />
-        <div className="relative">
+        {hero ? <div className="relative">
           <div className="flex gap-2">
             <span className="rounded-md bg-accent-red px-2 py-0.5 text-[11px] font-bold uppercase text-white">Top Story</span>
-            <span className="chip">{hero.tag}</span>
+            {hero.related_asset && <span className="chip">{hero.related_asset}</span>}
           </div>
-          <h1 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
+          <h2 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
             <Link href={`/news/${hero.slug}`} className="hover:text-primary-glow">{hero.title}</Link>
-          </h1>
+          </h2>
           <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-dim">{hero.summary}</p>
           <div className="mt-4 flex items-center gap-3 text-[12px] text-ink-dim">
-            <span>AION Crypto Desk</span>·<span>{hero.hoursAgo}h ago</span>·<span>{hero.minutes} min read</span>
+            <span>{hero.author}</span>·<time dateTime={hero.published_at}>{new Date(hero.published_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC</time>
           </div>
           <Link
             href={`/news/${hero.slug}`}
@@ -98,7 +93,7 @@ export function HeroRow({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
           >
             Read more
           </Link>
-        </div>
+        </div> : <div className="relative"><span className="chip">Editorial desk</span><h2 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">Verified coverage is being prepared</h2><p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-dim">AION Crypto publishes database-backed articles only after source, originality and compliance checks. Development fixtures are not shown as news.</p><Link href="/sources-methodology" className="mt-5 inline-block text-sm text-primary-glow">See our methodology</Link></div>}
       </article>
 
       {/* Latest news */}
@@ -109,27 +104,29 @@ export function HeroRow({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
             <li key={a.slug} className="py-3 first:pt-0 last:pb-0">
               <Link href={`/news/${a.slug}`} className="group block">
                 <div className="flex items-center gap-2 text-[11px] text-ink-dim">
-                  <span className="chip">{a.tag}</span><span>{a.hoursAgo}h ago</span>
+                  <span className="chip">{a.related_asset || a.category}</span><time dateTime={a.published_at}>{new Date(a.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}</time>
                 </div>
                 <div className="mt-1 text-[13.5px] font-medium leading-snug group-hover:text-primary-glow">{a.title}</div>
               </Link>
             </li>
           ))}
+          {!latest.length && <li className="py-3 text-[13px] text-ink-dim">No additional verified stories are published yet.</li>}
         </ul>
       </div>
 
       {/* Most read + market breadth */}
       <div className="grid gap-4">
         <div className="card p-4">
-          <SectionTitle href="/news" linkLabel="More">Most Read</SectionTitle>
+          <SectionTitle href="/news" linkLabel="More">More Coverage</SectionTitle>
           <ol className="space-y-2.5">
-            {mostRead.map((a, i) => (
+            {moreCoverage.map((a, i) => (
               <li key={a.slug} className="flex gap-2.5">
                 <span className="num mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 text-[11px] font-bold text-primary-glow">{i + 1}</span>
                 <Link href={`/news/${a.slug}`} className="text-[13px] leading-snug text-ink-dim hover:text-ink">{a.title}</Link>
               </li>
             ))}
           </ol>
+          {!moreCoverage.length && <p className="text-[13px] text-ink-dim">No sourced coverage is available yet.</p>}
         </div>
         <div className="card p-4 text-center">
           <SectionTitle>Market Breadth</SectionTitle>
@@ -202,7 +199,7 @@ export function MarketRow({
       <div className="grid gap-4">
         <div className="card p-4">
           <SectionTitle href="/markets">Market Dominance</SectionTitle>
-          {dom ? (
+          {dom && dom.eth_dominance_pct != null ? (
             <div className="flex items-center gap-4">
               <Donut
                 slices={[
@@ -223,13 +220,13 @@ export function MarketRow({
         </div>
         <div className="card border-primary/30 p-4">
           <div className="mb-2 flex items-center gap-2">
-            <span className="chip border-primary/40 text-primary-glow">AI</span>
+            <span className="chip border-primary/40 text-primary-glow">DATA</span>
             <h2 className="text-[13px] font-semibold uppercase tracking-wide">Market Summary</h2>
           </div>
-          {FIXTURE_INSIGHT.paragraphs.map((p) => (
-            <p key={p.slice(0, 20)} className="mt-2 text-[13px] leading-relaxed text-ink-dim">{p}</p>
-          ))}
-          <p className="mt-3 text-[11px] text-ink-dim/80">{FIXTURE_INSIGHT.disclaimer}</p>
+          {g.status !== "sample" && table.status !== "sample" && dom && coins.length ? <>
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">Among the {coins.length} tracked assets, {coins.filter((coin) => coin.change_24h_pct >= 0).length} have a non-negative 24-hour change. Bitcoin dominance is {dom.btc_dominance_pct.toFixed(1)}%.</p>
+            <p className="mt-3 text-[11px] text-ink-dim/80">Deterministic summary of the labeled market data above. Informational only.</p><div className="mt-2"><SourceTag p={g} /></div>
+          </> : <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">A verified market summary is unavailable while live or cached provider data cannot be confirmed. Sample fixtures are not summarized as current conditions.</p>}
         </div>
       </div>
     </section>
@@ -293,27 +290,28 @@ export function MoversRow({ table }: { table: Wrapped<TickerCoin[]> }) {
 }
 
 // ── 6. Articles grid ─────────────────────────────────────────────
-export function ArticlesGrid() {
+export function ArticlesGrid({ articles }: { articles: PublishedArticle[] }) {
   return (
     <section className="mt-6">
       <SectionTitle href="/news" linkLabel="View All Articles">Latest Articles</SectionTitle>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {FIXTURE_ARTICLES.map((a) => (
+        {articles.slice(0, 6).map((a) => (
           <Link key={a.slug} href={`/news/${a.slug}`} className="card group overflow-hidden">
             <div
               aria-hidden
               className="flex h-24 items-end p-3"
               style={{ background: "linear-gradient(135deg, rgba(124,58,237,.5), rgba(34,211,238,.18)), #111119" }}
             >
-              <span className="rounded bg-bg/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-glow">{a.tag}</span>
+              <span className="rounded bg-bg/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-glow">{a.related_asset || a.category}</span>
             </div>
             <div className="p-3">
               <h3 className="text-[13.5px] font-semibold leading-snug group-hover:text-primary-glow">{a.title}</h3>
-              <div className="mt-2 text-[11px] text-ink-dim">{a.hoursAgo}h ago · {a.minutes} min read</div>
+              <time className="mt-2 block text-[11px] text-ink-dim" dateTime={a.published_at}>{new Date(a.published_at).toLocaleDateString("en-US", { dateStyle: "medium", timeZone: "UTC" })}</time>
             </div>
           </Link>
         ))}
       </div>
+      {!articles.length && <div className="card p-5 text-sm text-ink-dim">No verified articles are published yet.</div>}
     </section>
   );
 }
@@ -326,13 +324,7 @@ export function NewsletterBand() {
         <h2 className="font-display text-lg font-bold">Stay updated</h2>
         <p className="text-[13px] text-ink-dim">Weekly crypto market intelligence in your inbox. No spam, unsubscribe anytime.</p>
       </div>
-      <form action="/newsletter" method="get" className="flex w-full max-w-sm gap-2">
-        <input
-          type="email" name="email" required placeholder="Enter your email" aria-label="Email address"
-          className="w-full rounded-lg border border-line bg-bg-soft px-3 py-2 text-sm placeholder:text-ink-dim focus:border-primary focus:outline-none"
-        />
-        <button className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-glow">Subscribe</button>
-      </form>
+      <Link href="/newsletter" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-glow">Choose alerts</Link>
     </section>
   );
 }
