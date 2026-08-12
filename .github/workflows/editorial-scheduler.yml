@@ -1,0 +1,31 @@
+name: Editorial scheduler
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: editorial-scheduler
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger protected editorial scheduler
+        env:
+          SCHEDULER_URL: ${{ secrets.AION_SCHEDULER_URL }}
+          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+        run: |
+          test -n "$SCHEDULER_URL"
+          test -n "$SCHEDULER_TOKEN"
+          curl --fail --show-error --silent --retry 2 --retry-all-errors \
+            --connect-timeout 10 --max-time 120 \
+            -X POST "$SCHEDULER_URL" \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            -H "Accept: application/json"
