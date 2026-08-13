@@ -22,7 +22,7 @@ jobs:
       - name: Send protected command
         env:
           MANUS_COMMAND: ${{ inputs.command }}
-          SCHEDULER_TOKEN: ${{ secrets.SCHEDULER_TOKEN }}
+          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
         run: |
           payload="$(jq -n --arg command "$MANUS_COMMAND" '{command: $command}')"
           curl --fail-with-body --silent --show-error \
