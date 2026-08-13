@@ -2,6 +2,8 @@ name: Bootstrap AION agent coordinator
 # Protocol activation: v1
 
 on:
+  schedule:
+    - cron: "*/15 * * * *"
   push:
     branches: [main]
     paths:
@@ -9,6 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: read
 
 concurrency:
@@ -86,3 +89,8 @@ jobs:
             -X POST \
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
             "$API_BASE/coordination/tick"
+
+      - name: Disable completed bootstrap
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable bootstrap-agent-coordinator.yml --repo "$GITHUB_REPOSITORY"
