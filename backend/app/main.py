@@ -1,12 +1,12 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db import init_db
 from app.middleware import RateLimitMiddleware
-from app.routers import admin, auth, cost, editorial, health, market, scheduler, watchlist
+from app.routers import admin, auth, cost, editorial, health, manus, market, scheduler, watchlist
 from app.services.market import get_market_service
 
 
@@ -52,16 +52,4 @@ app.include_router(cost.router)
 app.include_router(admin.router)
 app.include_router(editorial.router)
 app.include_router(scheduler.router)
-
-
-@app.post("/internal/manus/webhook", status_code=200)
-async def manus_webhook_validation(request: Request):
-    """Acknowledge the provider's registration probe without processing data.
-
-    Manus requires a reachable JSON POST endpoint before it exposes the public
-    key used to verify signed deliveries. This bootstrap route deliberately
-    has no database writes or task execution; signed event processing is added
-    only after that provider key is configured in Render.
-    """
-    await request.body()
-    return {"status": "webhook_registration_pending"}
+app.include_router(manus.router)
