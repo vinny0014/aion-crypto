@@ -133,6 +133,38 @@ class ManusWebhookEvent(Base):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class AgentCoordinationTask(Base):
+    """Leased handoff between Codex and Manus; no task may wait forever."""
+    __tablename__ = "agent_coordination_tasks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    idempotency_key: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    instructions: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default="queued", index=True)
+    current_actor: Mapped[str] = mapped_column(String(20), index=True)
+    lease_token_hash: Mapped[str] = mapped_column(String(64), default="")
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=6)
+    blocker_type: Mapped[str] = mapped_column(String(40), default="")
+    blocker_detail: Mapped[str] = mapped_column(Text, default="")
+    result_summary: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentCoordinationEvent(Base):
+    __tablename__ = "agent_coordination_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("agent_coordination_tasks.id"), index=True)
+    actor: Mapped[str] = mapped_column(String(20), default="system", index=True)
+    event_type: Mapped[str] = mapped_column(String(40), index=True)
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class CostLedgerEntry(Base):
     __tablename__ = "cost_ledger"
     id: Mapped[int] = mapped_column(primary_key=True)

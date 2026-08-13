@@ -29,3 +29,14 @@ jobs:
             -X POST "$SCHEDULER_URL" \
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
             -H "Accept: application/json"
+      - name: Recover and hand off agent work
+        if: always()
+        env:
+          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+        run: |
+          test -n "$SCHEDULER_TOKEN"
+          curl --fail-with-body --silent --show-error \
+            --connect-timeout 10 --max-time 40 \
+            -X POST \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            https://aion-crypto-api.onrender.com/internal/manus/coordination/tick
