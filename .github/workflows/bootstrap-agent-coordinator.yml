@@ -1,0 +1,87 @@
+name: Bootstrap AION agent coordinator
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bootstrap-agent-coordinator.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bootstrap-aion-agent-coordinator
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      API_BASE: https://aion-crypto-api.onrender.com/internal/manus
+      SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+    steps:
+      - name: Validate secret
+        run: test -n "$SCHEDULER_TOKEN"
+
+      - name: Ask Manus to deploy only when coordinator is absent
+        run: |
+          current="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --max-time 20 \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            "$API_BASE/coordination/status")"
+          if [ "$current" = "200" ]; then
+            echo "Coordinator already deployed; skipping deploy command."
+            exit 0
+          fi
+
+          command='AION task: deploy the latest commit 75b658e8c84811a46e5094867bf034e0da3c87ae from branch codex/aion-crypto-production-review to the Render service aion-crypto-api. Wait for Live and validate /health/ready plus /internal/manus/health. Do not alter code, branches, DNS, database data, sources, secrets or publish articles. Stop only for payment, CAPTCHA, login or 2FA. The GitHub bootstrap will validate the coordinator automatically after deployment.'
+          payload="$(jq -n --arg command "$command" '{command: $command}')"
+          curl --fail-with-body --silent --show-error \
+            --max-time 40 \
+            -H "Content-Type: application/json" \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --data "$payload" \
+            "$API_BASE/send"
+
+      - name: Wait for coordinator deployment
+        run: |
+          for attempt in $(seq 1 45); do
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 20 \
+              -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+              "$API_BASE/coordination/status")"
+            if [ "$code" = "200" ]; then
+              echo "Coordinator is ready."
+              exit 0
+            fi
+            echo "Attempt $attempt: coordinator returned HTTP $code"
+            sleep 20
+          done
+          echo "Coordinator did not become ready within 15 minutes."
+          exit 1
+
+      - name: Create idempotent validation task
+        run: |
+          payload="$(jq -n '{
+            idempotency_key: "bootstrap:agent-coordinator:20260813",
+            title: "Validate the AION Codex-Manus coordination loop",
+            instructions: "Validate in read-only mode that health/ready is 200, the Manus bridge verifies signatures, the coordination watchdog is reachable, and the editorial scheduler remains active. Complete this coordination task with objective evidence. Do not deploy, publish, alter code, branches, DNS, database data, sources or secrets.",
+            actor: "manus",
+            max_attempts: 6
+          }')"
+          curl --fail-with-body --silent --show-error \
+            --max-time 40 \
+            -H "Content-Type: application/json" \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --data "$payload" \
+            "$API_BASE/coordination/tasks"
+
+      - name: Dispatch validation task to Manus
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --max-time 40 \
+            -X POST \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            "$API_BASE/coordination/tick"
