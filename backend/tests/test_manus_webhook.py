@@ -102,3 +102,27 @@ def test_webhook_rejects_signature_for_different_body(signed_client):
         headers=_signed_headers(private_key, signed_body),
     )
     assert response.status_code == 401
+
+
+def test_command_bridge_requires_scheduler_token(signed_client, monkeypatch):
+    client, _ = signed_client
+    monkeypatch.setenv("SCHEDULER_TOKEN", "s" * 32)
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    assert client.post("/internal/manus/send", json={"command": "check production"}).status_code == 401
+
+
+def test_command_bridge_fails_closed_without_api_key(signed_client, monkeypatch):
+    client, _ = signed_client
+    monkeypatch.setenv("SCHEDULER_TOKEN", "s" * 32)
+    monkeypatch.delenv("MANUS_API_KEY", raising=False)
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    response = client.post(
+        "/internal/manus/send",
+        json={"command": "check production"},
+        headers={"X-Scheduler-Token": "s" * 32},
+    )
+    assert response.status_code == 503

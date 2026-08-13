@@ -4,12 +4,15 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import secrets
 import time
 
+import httpx
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -18,6 +21,10 @@ from app.db import get_db
 from app.models import ManusWebhookEvent
 
 router = APIRouter(prefix="/internal/manus", tags=["internal"])
+
+
+class ManusCommand(BaseModel):
+    command: str = Field(min_length=1, max_length=20_000)
 
 
 def _reject(detail: str = "invalid webhook signature") -> None:
@@ -56,12 +63,59 @@ def _limited_string(value: object, limit: int) -> str:
     return value[:limit] if isinstance(value, str) else ""
 
 
+def _authorize_command(token: str | None) -> None:
+    configured = get_settings().scheduler_token
+    if not configured or token is None or not secrets.compare_digest(token, configured):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid scheduler token")
+
+
 @router.get("/health")
 def manus_webhook_health():
     settings = get_settings()
     return {
         "status": "ready" if settings.manus_webhook_public_key else "unconfigured",
         "signature_verification": bool(settings.manus_webhook_public_key),
+    }
+
+
+@router.post("/send")
+async def send_manus_command(
+    command: ManusCommand,
+    x_scheduler_token: str | None = Header(default=None),
+):
+    """Send one protected command to the account's persistent Manus agent."""
+    _authorize_command(x_scheduler_token)
+    normalized_command = command.command.strip()
+    if not normalized_command:
+        raise HTTPException(status_code=422, detail="command cannot be blank")
+    settings = get_settings()
+    if not settings.manus_api_key:
+        raise HTTPException(status_code=503, detail="Manus API is not configured")
+    payload = {
+        "task_id": "agent-default-main_task",
+        "message": {"content": [{"type": "text", "text": normalized_command}]},
+        "agent_profile": "manus-1.6",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.manus.ai/v2/task.sendMessage",
+                headers={"x-manus-api-key": settings.manus_api_key},
+                json=payload,
+            )
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Manus API is temporarily unreachable")
+    try:
+        result = response.json()
+    except ValueError:
+        result = {}
+    if response.status_code != 200 or not result.get("ok"):
+        error_code = (result.get("error") or {}).get("code", "provider_error")
+        raise HTTPException(status_code=502, detail=f"Manus API rejected the command: {error_code}")
+    return {
+        "status": "sent",
+        "task_id": result.get("task_id", "agent-default-main_task"),
+        "request_id": result.get("request_id", ""),
     }
 
 
