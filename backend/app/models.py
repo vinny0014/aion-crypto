@@ -117,6 +117,22 @@ class SchedulerRun(Base):
     last_error: Mapped[str] = mapped_column(Text, default="")
 
 
+class ManusWebhookEvent(Base):
+    """Verified Manus event inbox. Events never execute tasks directly."""
+    __tablename__ = "manus_webhook_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    event_type: Mapped[str] = mapped_column(String(40), index=True)
+    task_id: Mapped[str] = mapped_column(String(200), index=True)
+    task_title: Mapped[str] = mapped_column(String(500), default="")
+    task_url: Mapped[str] = mapped_column(String(1000), default="")
+    stop_reason: Mapped[str] = mapped_column(String(40), default="")
+    message: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(30), default="received", index=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class CostLedgerEntry(Base):
     __tablename__ = "cost_ledger"
     id: Mapped[int] = mapped_column(primary_key=True)

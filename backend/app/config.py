@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     scheduler_interval_minutes: int = 60
     scheduler_token: str = ""
     scheduler_max_sources_per_run: int = 10
+    manus_api_key: str = ""
+    manus_webhook_public_key: str = ""
+    manus_webhook_max_age_seconds: int = 300
+    manus_webhook_max_body_bytes: int = 262144
 
     last_valid_store_path: str = "data/last_valid.json"
     rate_limit_public_per_minute: int = 120
