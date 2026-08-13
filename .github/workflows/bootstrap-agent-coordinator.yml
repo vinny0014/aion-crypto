@@ -1,4 +1,5 @@
 name: Bootstrap AION agent coordinator
+# Protocol activation: v1
 
 on:
   push:
