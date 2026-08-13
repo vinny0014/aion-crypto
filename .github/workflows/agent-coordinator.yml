@@ -1,0 +1,26 @@
+name: AION agent coordinator
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aion-agent-coordinator
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recover stale work and dispatch the next Manus task
+        env:
+          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+        run: |
+          test -n "$SCHEDULER_TOKEN"
+          curl --fail-with-body --silent --show-error \
+            --max-time 40 \
+            -X POST \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            https://aion-crypto-api.onrender.com/internal/manus/coordination/tick
