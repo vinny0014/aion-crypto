@@ -1,0 +1,55 @@
+name: Audit AION Crypto production readiness (one time)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/audit-production-readiness-once.yml
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: audit-production-readiness-once
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    env:
+      API_BASE: https://aion-crypto-api.onrender.com/internal/manus
+      SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+    steps:
+      - name: Create idempotent production audit task
+        run: |
+          test -n "$SCHEDULER_TOKEN"
+          payload="$(jq -n '{
+            idempotency_key: "audit:production-readiness:2026-08-14-v1",
+            title: "Audit remaining AION Crypto production gaps",
+            instructions: "Perform a read-only production audit after the Character Arena deployment. Verify homepage, markets, news, mascot arena, RSS, sitemap, robots, legal/editorial pages, Analytics presence, AdSense readiness placeholders, scheduler health and current number of published articles. Identify only evidence-backed gaps blocking original news publication, indexing, AdSense application and legitimate audience growth. Do not change code, GitHub, Hostinger, Render, DNS, database, secrets, scheduler, Search Console or published content. Send heartbeat while working and complete with a prioritized concise report. Block only for payment, CAPTCHA, login or 2FA.",
+            actor: "manus",
+            max_attempts: 6
+          }')"
+          curl --fail-with-body --silent --show-error \
+            --max-time 35 \
+            -H "Content-Type: application/json" \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --data "$payload" \
+            "$API_BASE/coordination/tasks" |
+            jq -e '.status == "created" or .status == "duplicate"'
+
+      - name: Dispatch task to persistent Manus agent
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --max-time 40 \
+            -X POST \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            "$API_BASE/coordination/tick" |
+            jq -e '.status == "dispatched" or .status == "empty"'
+
+      - name: Disable one-time dispatcher
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable audit-production-readiness-once.yml --repo "$GITHUB_REPOSITORY"
