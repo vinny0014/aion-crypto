@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { getTokens, logout, resolveSession, type SessionState } from "../lib/auth";
 
 const NAV = [
-  ["Markets", "/markets"], ["News", "/news"], ["Coins", "/coins"], ["Analysis", "/analysis"],
+  ["Markets", "/markets"], ["News", "/news"], ["Coins", "/coins"], ["Arena", "/mascot-arena"], ["Analysis", "/analysis"],
   ["Research", "/research"], ["Guides", "/guides"], ["Learn", "/learn"], ["Glossary", "/glossary"],
 ] as const;
 
