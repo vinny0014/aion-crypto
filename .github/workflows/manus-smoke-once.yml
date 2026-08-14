@@ -1,6 +1,10 @@
 name: AION Manus smoke test (one time)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/manus-smoke-once.yml
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
