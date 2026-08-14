@@ -2,7 +2,7 @@
 users, watchlist, newsletter, cost ledger and task queue."""
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -184,6 +184,8 @@ class MascotArenaVote(Base):
     __tablename__ = "mascot_arena_votes"
     __table_args__ = (
         UniqueConstraint("round_id", "voter_hash", "vote_day", name="uq_mascot_vote_round_voter_day"),
+        Index("ix_mascot_arena_votes_round_rank", "round_id", "mascot_symbol"),
+        Index("ix_mascot_arena_votes_ip_time", "ip_hash", "voted_at"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     round_id: Mapped[int] = mapped_column(ForeignKey("mascot_arena_rounds.id"), index=True)
