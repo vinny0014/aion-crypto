@@ -1,0 +1,55 @@
+name: Deploy mascot arena with Manus (one time)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/deploy-mascot-arena-once.yml
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: deploy-mascot-arena-once
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    env:
+      API_BASE: https://aion-crypto-api.onrender.com/internal/manus
+      SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+    steps:
+      - name: Create idempotent Hostinger deployment task
+        run: |
+          test -n "$SCHEDULER_TOKEN"
+          payload="$(jq -n '{
+            idempotency_key: "deploy:mascot-arena:8b3f754",
+            title: "Deploy and validate the AION Crypto Character Arena",
+            instructions: "PR #28 is merged into codex/aion-crypto-production-review at commit 8b3f754600567db4d402ab705a2708d7f828316d. In Hostinger, confirm the AION Crypto web app deploys this exact commit or a descendant from that branch. If automatic deployment has not started, trigger one deployment only. Wait until production is healthy, then validate https://aioncrypto.cloud/ and https://aioncrypto.cloud/mascot-arena return HTTP 200; Arena appears in navigation; all ten character images load; desktop and mobile layouts have no broken image, overflow or missing text. Do not change code, GitHub, DNS, database, Render, secrets, scheduler, sources or published articles. Send heartbeat while working and complete this coordination task with objective evidence. Block only for payment, CAPTCHA, login or 2FA.",
+            actor: "manus",
+            max_attempts: 6
+          }')"
+          curl --fail-with-body --silent --show-error \
+            --max-time 35 \
+            -H "Content-Type: application/json" \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --data "$payload" \
+            "$API_BASE/coordination/tasks" |
+            jq -e '.status == "created" or .status == "duplicate"'
+
+      - name: Dispatch task to persistent Manus agent
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --max-time 40 \
+            -X POST \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            "$API_BASE/coordination/tick" |
+            jq -e '.status == "dispatched" or .status == "empty"'
+
+      - name: Disable one-time dispatcher
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable deploy-mascot-arena-once.yml --repo "$GITHUB_REPOSITORY"
