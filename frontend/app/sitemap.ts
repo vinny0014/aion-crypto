@@ -6,7 +6,7 @@ export const revalidate = 300;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPaths = [
-    "", "/markets", "/analysis", "/research", "/guides", "/learn", "/glossary",
+    "", "/markets", "/mascot-arena", "/analysis", "/research", "/guides", "/learn", "/glossary",
     "/about", "/contact", "/privacy", "/terms", "/disclaimer", "/risk-disclosure",
     "/editorial-policy", "/corrections-policy", "/newsletter", "/status", "/categories", "/tags",
     "/cookie-policy", "/sources-methodology", "/copyright-dmca", "/publisher", "/author/aion-crypto", "/accessibility",
