@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     manus_webhook_public_key: str = ""
     manus_webhook_max_age_seconds: int = 300
     manus_webhook_max_body_bytes: int = 262144
+    mascot_vote_secret: str = ""
+    mascot_vote_ip_daily_limit: int = 20
 
     last_valid_store_path: str = "data/last_valid.json"
     rate_limit_public_per_minute: int = 120
@@ -70,6 +72,8 @@ class Settings(BaseSettings):
             raise ValueError("PUBLIC_SITE_URL must match the official canonical domain")
         if self.scheduler_enabled and len(self.scheduler_token) < 32:
             raise ValueError("SCHEDULER_TOKEN must contain at least 32 characters when the scheduler is enabled")
+        if self.mascot_vote_secret and len(self.mascot_vote_secret) < 32:
+            raise ValueError("MASCOT_VOTE_SECRET must contain at least 32 characters when configured")
 
         frontend = urlparse(self.frontend_url)
         if frontend.scheme != "https" or frontend.hostname in {"localhost", "127.0.0.1", None}:

@@ -151,3 +151,21 @@ export async function getPublishedArticle(slug: string): Promise<PublishedArticl
   const response = await backendJson<{ data: PublishedArticle }>(`/api/v1/articles/${encodeURIComponent(slug)}`);
   return response?.data ?? null;
 }
+
+export type MascotRankingItem = {
+  symbol: string; coin: string; title: string; position: number; votes: number;
+  percentage: number; movement: number;
+};
+
+export type MascotArenaState = {
+  round: { id: number; week: string; starts_at: string; ends_at: string; status: string; total_votes: number };
+  champion: MascotRankingItem;
+  ranking: MascotRankingItem[];
+  hall_of_fame: Array<MascotRankingItem & { week: string; championships: number }>;
+  can_vote: boolean;
+  next_vote_at: string | null;
+};
+
+export async function getMascotArena(): Promise<MascotArenaState | null> {
+  return backendJson<MascotArenaState>("/api/v1/mascot-arena");
+}

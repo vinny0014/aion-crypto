@@ -1,8 +1,10 @@
 import Link from "next/link";
-import type { GlobalMetrics, Kline, PublishedArticle, TickerCoin, Wrapped } from "../lib/api";
+import Image from "next/image";
+import type { GlobalMetrics, Kline, MascotArenaState, PublishedArticle, TickerCoin, Wrapped } from "../lib/api";
 import { fmtNum, fmtPct, fmtUsd } from "../lib/format";
 import { AreaChart, Donut, FearGreedGauge, Sparkline } from "./charts";
 import { CoinDot, Delta, SectionTitle, SourceTag, Unavailable } from "./ui";
+import { mascotFor } from "../lib/mascots";
 
 // ── 1. Coin ticker strip ─────────────────────────────────────────
 export function TickerBar({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
@@ -325,6 +327,29 @@ export function NewsletterBand() {
         <p className="text-[13px] text-ink-dim">Weekly crypto market intelligence in your inbox. No spam, unsubscribe anytime.</p>
       </div>
       <Link href="/newsletter" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-glow">Choose alerts</Link>
+    </section>
+  );
+}
+
+export function MascotArenaPreview({ arena }: { arena: MascotArenaState | null }) {
+  const champion = arena?.champion;
+  const mascot = mascotFor(champion?.symbol ?? "BTC")!;
+  const top = arena?.ranking.slice(0, 3) ?? [];
+  return (
+    <section className="card mt-5 overflow-hidden border-amber-400/25">
+      <div className="grid items-center md:grid-cols-[220px_1fr]">
+        <div className="relative h-56 md:h-full md:min-h-[250px]">
+          <Image src={mascot.image} alt={`${mascot.title}, current Mascot Arena leader`} fill sizes="(max-width: 768px) 100vw, 220px" className="object-cover object-top" />
+          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent md:bg-gradient-to-r md:from-transparent md:to-card" />
+        </div>
+        <div className="p-5 sm:p-7">
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-amber-300">Mascot Arena · Battle for the Crown</p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-white">{mascot.title} is leading the Arena</h2>
+          <p className="mt-2 text-sm text-ink-dim">Choose one of ten original crypto characters and shape this week&apos;s ranking.</p>
+          {top.length > 0 && <ol className="mt-4 flex flex-wrap gap-2">{top.map((item) => <li key={item.symbol} className="chip">#{item.position} {item.symbol} · {item.votes.toLocaleString()}</li>)}</ol>}
+          <div className="mt-5 flex flex-wrap gap-3"><Link href="/mascot-arena#contenders" className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-glow">Vote Now</Link><Link href="/mascot-arena#ranking" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">View Arena</Link></div>
+        </div>
+      </div>
     </section>
   );
 }

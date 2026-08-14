@@ -12,6 +12,7 @@ from app.models import Article, SchedulerRun, Source
 from app.pipeline.commander import LOCK_TIMEOUT_MINUTES
 from app.pipeline.editorial import utcnow
 from app.pipeline.registry import build_commander
+from app.services.arena import ensure_current_round
 
 
 def scheduler_status(db: Session) -> dict:
@@ -46,6 +47,9 @@ def run_editorial_schedule(db: Session, *, trigger: str = "scheduled") -> dict:
         run.status = "skipped"; run.finished_at = utcnow(); run.last_error = "another scheduler run holds the lease"; db.commit()
         return {"status": "locked", "run_id": run.id}
     try:
+        # The Arena lifecycle shares the existing zero-cost scheduler. Reads
+        # also run this guard, so a delayed scheduler never blocks voting.
+        ensure_current_round(db, now)
         sources = db.execute(select(Source).where(Source.active.is_(True)).order_by(Source.id).limit(settings.scheduler_max_sources_per_run)).scalars().all()
         commander = build_commander(db)
         before = db.execute(select(func.count(Article.id))).scalar_one()

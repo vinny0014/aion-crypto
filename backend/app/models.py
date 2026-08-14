@@ -165,6 +165,36 @@ class AgentCoordinationEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
+class MascotArenaRound(Base):
+    """A UTC weekly competition. Completed rounds are the Hall of Fame source."""
+    __tablename__ = "mascot_arena_rounds"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    week_key: Mapped[str] = mapped_column(String(16), unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    champion_symbol: Mapped[str] = mapped_column(String(20), default="", index=True)
+    top_three_json: Mapped[str] = mapped_column(Text, default="[]")
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MascotArenaVote(Base):
+    """Privacy-preserving anonymous vote; raw IP and device identifiers are never stored."""
+    __tablename__ = "mascot_arena_votes"
+    __table_args__ = (
+        UniqueConstraint("round_id", "voter_hash", "vote_day", name="uq_mascot_vote_round_voter_day"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    round_id: Mapped[int] = mapped_column(ForeignKey("mascot_arena_rounds.id"), index=True)
+    mascot_symbol: Mapped[str] = mapped_column(String(20), index=True)
+    voter_hash: Mapped[str] = mapped_column(String(64), index=True)
+    ip_hash: Mapped[str] = mapped_column(String(64), index=True)
+    vote_day: Mapped[str] = mapped_column(String(10), index=True)
+    source: Mapped[str] = mapped_column(String(120), default="arena")
+    voted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class CostLedgerEntry(Base):
     __tablename__ = "cost_ledger"
     id: Mapped[int] = mapped_column(primary_key=True)

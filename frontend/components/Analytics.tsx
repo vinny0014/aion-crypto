@@ -7,7 +7,7 @@ import { useEffect } from "react";
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
-export function track(event: string, params: Record<string, string> = {}) {
+export function track(event: string, params: Record<string, string | number | boolean> = {}) {
   if (typeof window !== "undefined" && GA_ID && "gtag" in window) {
     (window as typeof window & { gtag: (...args: unknown[]) => void }).gtag("event", event, params);
   }
@@ -18,6 +18,7 @@ export default function Analytics() {
   useEffect(() => {
     track("page_view", { page_path: pathname });
     if (pathname === "/markets") track("market_view");
+    else if (pathname === "/mascot-arena") track("mascot_arena_view");
     else if (pathname.startsWith("/crypto/")) track("coin_view", { symbol: pathname.split("/")[2] ?? "" });
     else if (pathname.startsWith("/news/")) track("article_view");
     else if (pathname === "/search") track("search");

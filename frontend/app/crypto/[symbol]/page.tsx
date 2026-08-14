@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCoin, getKlines, getPublishedArticles } from "../../../lib/api";
+import { getCoin, getKlines, getMascotArena, getPublishedArticles } from "../../../lib/api";
+import { mascotFor } from "../../../lib/mascots";
 import { AreaChart, CandleChart } from "../../../components/charts";
 import { Delta, SourceTag } from "../../../components/ui";
 import { fmtNum, fmtUsd } from "../../../lib/format";
@@ -23,10 +24,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CoinPage({ params }: Props) {
   const { symbol } = await params;
   const sym = symbol.toUpperCase();
-  const [coin, klines, published] = await Promise.all([getCoin(sym), getKlines(sym, "1h", 168), getPublishedArticles()]);
+  const [coin, klines, published, arena] = await Promise.all([getCoin(sym), getKlines(sym, "1h", 168), getPublishedArticles(), getMascotArena()]);
   if (coin.status === "not_found") notFound();
   const d = coin.data!;
   const related = published.filter((a) => a.related_asset === sym || a.category === "Market Analysis").slice(0, 3);
+  const mascot = mascotFor(sym);
+  const mascotStanding = arena?.ranking.find((item) => item.symbol === sym);
 
   const stats: [string, string][] = [
     ["Market Cap", fmtUsd(d.market_cap_usd, true)],
@@ -77,6 +80,12 @@ export default async function CoinPage({ params }: Props) {
             <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide">Price — 7 days</h2>
             {klines.data ? <AreaChart klines={klines.data} /> : <p className="text-[13px] text-ink-dim">Chart temporarily unavailable.</p>}
           </section>
+          {mascot && <section className="card border-primary/30 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[.16em] text-primary-glow">Official AION Mascot</p>
+            <h2 className="mt-2 font-display text-lg font-bold text-white">{mascot.title}</h2>
+            <p className="mt-1 text-[12.5px] text-ink-dim">{mascot.role}{mascotStanding ? ` · Rank #${mascotStanding.position}` : ""}</p>
+            <Link href={`/mascot-arena#${sym.toLowerCase()}`} className="mt-3 inline-flex rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary-glow">Vote in Mascot Arena</Link>
+          </section>}
           <section className="card p-4">
             <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide">Candles — hourly</h2>
             {klines.data ? <CandleChart klines={klines.data.slice(-72)} /> : <p className="text-[13px] text-ink-dim">Chart temporarily unavailable.</p>}

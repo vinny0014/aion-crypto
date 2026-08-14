@@ -17,6 +17,7 @@ EXPECTED_TABLES = {
     "articles", "cost_ledger", "incidents", "sources", "subscribers",
     "tasks", "users", "watchlist_items", "refresh_sessions", "alembic_version", "subscriber_preferences",
     "editorial_events", "social_outbox", "breaking_campaigns", "scheduler_runs",
+    "mascot_arena_rounds", "mascot_arena_votes",
 }
 
 
