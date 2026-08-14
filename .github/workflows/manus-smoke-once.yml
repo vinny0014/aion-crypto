@@ -1,90 +1,19 @@
-name: AION Manus smoke test (one time)
+name: AION Manus smoke test (retired)
 
+# The one-time production smoke test completed successfully on 2026-08-14.
+# Evidence is stored in the private coordination ledger as task 2.
+# This workflow intentionally has no schedule or push trigger.
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/manus-smoke-once.yml
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
-  actions: write
   contents: read
 
-concurrency:
-  group: aion-manus-smoke-once
-  cancel-in-progress: false
-
 jobs:
-  smoke:
+  evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
-    env:
-      API_BASE: https://aion-crypto-api.onrender.com/internal/manus
-      SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
     steps:
-      - name: Validate signed bridge health
+      - name: Report retired test
         run: |
-          test -n "$SCHEDULER_TOKEN"
-          curl --fail-with-body --silent --show-error \
-            --max-time 35 \
-            "$API_BASE/health" |
-            jq -e '.status == "ready" and .signature_verification == true'
-
-      - name: Create idempotent Manus communication test
-        id: create
-        run: |
-          payload="$(jq -n '{
-            idempotency_key: "smoke:codex-manus:2026-08-13-v1",
-            title: "Confirm Codex-Manus communication",
-            instructions: "Read-only smoke test. Confirm receipt, validate /health/ready and /internal/manus/health without changing code, deploys, DNS, database, sources, secrets, scheduler or published articles. Then complete this coordination task with an objective summary.",
-            actor: "manus",
-            max_attempts: 4
-          }')"
-          response="$(curl --fail-with-body --silent --show-error \
-            --max-time 35 \
-            -H "Content-Type: application/json" \
-            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
-            --data "$payload" \
-            "$API_BASE/coordination/tasks")"
-          task_id="$(jq -er '.task.id' <<<"$response")"
-          echo "task_id=$task_id" >> "$GITHUB_OUTPUT"
-
-      - name: Dispatch task to persistent Manus agent
-        run: |
-          curl --fail-with-body --silent --show-error \
-            --max-time 40 \
-            -X POST \
-            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
-            "$API_BASE/coordination/tick" |
-            jq -e '.status == "dispatched" or .status == "empty"'
-
-      - name: Await Manus completion
-        env:
-          TASK_ID: ${{ steps.create.outputs.task_id }}
-        run: |
-          for attempt in $(seq 1 16); do
-            status="$(curl --fail-with-body --silent --show-error \
-              --max-time 35 \
-              -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
-              "$API_BASE/coordination/status")"
-            task_status="$(jq -r --argjson id "$TASK_ID" '.tasks[]? | select(.id == $id) | .status' <<<"$status" | head -1)"
-            if [ "$task_status" = "completed" ]; then
-              exit 0
-            fi
-            if [ "$task_status" = "failed" ] || [ "$task_status" = "blocked_external" ]; then
-              echo "Communication test ended with status: $task_status"
-              exit 1
-            fi
-            sleep 30
-          done
-          echo "Manus did not complete the smoke test within 8 minutes"
-          exit 1
-
-      - name: Disable successful one-time workflow
-        if: success()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow disable manus-smoke-once.yml --repo "$GITHUB_REPOSITORY"
+          echo "Codex-Manus round-trip verified: task created, claimed, heartbeat received and completed."
+          echo "Automatic reruns are disabled to prevent duplicate messages."
