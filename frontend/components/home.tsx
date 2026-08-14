@@ -11,7 +11,7 @@ export function TickerBar({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
   if (!ticker.data) return null;
   return (
     <div className="border-b border-line bg-bg-soft/60">
-      <div className="mx-auto flex max-w-[1400px] items-center gap-5 overflow-x-auto px-3 py-2 sm:px-5 scroll-thin">
+      <div className="mx-auto flex max-w-[1400px] items-center gap-5 overflow-x-auto px-3 py-2 sm:px-5 scroll-thin" role="region" aria-label="Live cryptocurrency ticker" tabIndex={0}>
         {ticker.data.map((c) => (
           <Link key={c.symbol} href={`/crypto/${c.symbol}`} className="flex shrink-0 items-center gap-2 text-[12.5px]">
             <CoinDot symbol={c.symbol} />
@@ -40,7 +40,7 @@ export function GlobalMetricsBar({ g }: { g: Wrapped<GlobalMetrics> }) {
     : [];
   return (
     <div className="border-b border-line">
-      <div className="mx-auto flex max-w-[1400px] items-stretch gap-6 overflow-x-auto px-3 py-3 sm:px-5 scroll-thin">
+      <div className="mx-auto flex max-w-[1400px] items-stretch gap-6 overflow-x-auto px-3 py-3 sm:px-5 scroll-thin" role="region" aria-label="Global cryptocurrency market metrics" tabIndex={0}>
         {d ? (
           items.map(([label, value, delta]) => (
             <div key={label} className="shrink-0">
