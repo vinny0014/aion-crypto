@@ -155,13 +155,17 @@ export async function getPublishedArticle(slug: string): Promise<PublishedArticl
 export type MascotRankingItem = {
   symbol: string; coin: string; title: string; position: number; votes: number;
   percentage: number; movement: number;
+  latest_news: { slug: string; title: string; published_at: string } | null;
 };
 
 export type MascotArenaState = {
   round: { id: number; week: string; starts_at: string; ends_at: string; status: string; total_votes: number };
   champion: MascotRankingItem;
+  mascot_of_week: (MascotRankingItem & { week: string }) | null;
   ranking: MascotRankingItem[];
   hall_of_fame: Array<MascotRankingItem & { week: string; championships: number }>;
+  next_challenger: { symbol: string; coin: string; title: string } | null;
+  last_rotation: { relegated: { symbol: string; coin: string; title: string }; promoted: { symbol: string; coin: string; title: string }; week: string } | null;
   can_vote: boolean;
   next_vote_at: string | null;
 };

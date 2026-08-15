@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.pipeline.commander import Commander
+from app.models import SchedulerRun
 from app.pipeline.editorial import EditorialPipeline
 from app.services.radar import scan_source
 
@@ -30,6 +31,13 @@ def build_commander(db: Session) -> Commander:
         commander.register(agent, handler(agent))
     def source_scan(payload: dict) -> dict:
         result = scan_source(db, int(payload["source_id"]))
+        if payload.get("scheduler_run_id"):
+            scheduler_run = db.get(SchedulerRun, int(payload["scheduler_run_id"]))
+            if scheduler_run is not None:
+                scheduler_run.items_seen += int(result.get("items", 0))
+                scheduler_run.articles_detected += int(result.get("detected", 0))
+                scheduler_run.duplicates_rejected += int(result.get("duplicates", 0))
+                db.commit()
         for article_id in result.get("article_ids", []):
             commander.enqueue(
                 "radar",
@@ -39,4 +47,7 @@ def build_commander(db: Session) -> Commander:
         return result
 
     commander.register("source-scan", source_scan)
+    # Import locally to avoid a registry/market-news import cycle.
+    from app.services.market_news import publish_daily_market_brief
+    commander.register("market-brief", lambda _payload: publish_daily_market_brief(db))
     return commander

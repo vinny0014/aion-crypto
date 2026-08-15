@@ -175,6 +175,12 @@ class MascotArenaRound(Base):
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     champion_symbol: Mapped[str] = mapped_column(String(20), default="", index=True)
     top_three_json: Mapped[str] = mapped_column(Text, default="[]")
+    roster_json: Mapped[str] = mapped_column(Text, default="[]")
+    reserve_json: Mapped[str] = mapped_column(Text, default="[]")
+    next_roster_json: Mapped[str] = mapped_column(Text, default="[]")
+    next_reserve_json: Mapped[str] = mapped_column(Text, default="[]")
+    relegated_symbol: Mapped[str] = mapped_column(String(20), default="")
+    promoted_symbol: Mapped[str] = mapped_column(String(20), default="")
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

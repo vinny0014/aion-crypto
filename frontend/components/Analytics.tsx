@@ -23,6 +23,24 @@ export default function Analytics() {
     else if (pathname.startsWith("/news/")) track("article_view");
     else if (pathname === "/search") track("search");
   }, [pathname]);
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const anchor = (event.target as Element | null)?.closest("a");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      const url = new URL(anchor.href, window.location.origin);
+      if (url.origin !== window.location.origin) return;
+      const explicit = anchor.dataset.analyticsEvent;
+      if (explicit) track(explicit, { destination: url.pathname });
+      if (url.pathname === "/news" || url.pathname.startsWith("/news/")) {
+        track("news_click", { destination: url.pathname });
+      }
+      if (url.pathname === "/markets" || url.pathname.startsWith("/crypto/")) {
+        track("market_click", { destination: url.pathname });
+      }
+    };
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
   if (!GA_ID && !CLARITY_ID) return null;
   return <>
     {GA_ID && <Script id="ga" src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />}

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import ipaddress
+import html
+import re
 import socket
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -17,6 +19,12 @@ from app.pipeline.editorial import EditorialPipeline, valid_public_url
 
 MAX_FEED_BYTES = 2_000_000
 MAX_ITEMS = 25
+
+
+def _clean_text(value: str) -> str:
+    """Turn feed metadata into plain text without retaining publisher markup."""
+    without_tags = re.sub(r"<[^>]+>", " ", html.unescape(value))
+    return " ".join(without_tags.split())
 
 
 def _classify(title: str, summary: str) -> tuple[str, str]:
@@ -56,7 +64,7 @@ def _text(node: ET.Element, names: tuple[str, ...]) -> str:
     for child in node.iter():
         tag = child.tag.rsplit("}", 1)[-1].lower()
         if tag in names and child.text:
-            return " ".join(child.text.split())
+            return _clean_text(child.text)
     return ""
 
 
@@ -94,6 +102,8 @@ def scan_source(db: Session, source_id: int) -> dict:
         root = ET.fromstring(response.content)
         nodes = [node for node in root.iter() if node.tag.rsplit("}", 1)[-1].lower() in {"item", "entry"}][:MAX_ITEMS]
         article_ids: list[int] = []
+        eligible = 0
+        duplicates = 0
         pipeline = EditorialPipeline(db)
         for node in nodes:
             title = _text(node, ("title",))
@@ -106,6 +116,7 @@ def scan_source(db: Session, source_id: int) -> dict:
                         break
             if len(title) < 12 or not valid_public_url(link):
                 continue
+            eligible += 1
             category, related_asset = _classify(title, summary)
             before = db.query(Article).count()
             article = pipeline.create_detected(
@@ -122,10 +133,16 @@ def scan_source(db: Session, source_id: int) -> dict:
             after = db.query(Article).count()
             if after > before:
                 article_ids.append(article.id)
+            else:
+                duplicates += 1
         source.last_success_at = datetime.now(timezone.utc)
         source.last_error = ""
         db.commit()
-        return {"detected": len(article_ids), "article_ids": article_ids, "items": len(nodes), "status": "ok"}
+        return {
+            "detected": len(article_ids), "article_ids": article_ids,
+            "items": len(nodes), "eligible": eligible, "duplicates": duplicates,
+            "status": "ok",
+        }
     except Exception as exc:
         source.last_error = str(exc)[:1000]
         db.commit()

@@ -11,13 +11,17 @@ const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
 type RankingItem = {
   symbol: string; coin: string; title: string; position: number; votes: number;
   percentage: number; movement: number;
+  latest_news: { slug: string; title: string; published_at: string } | null;
 };
 type HallEntry = RankingItem & { week: string; championships: number };
 type ArenaState = {
   round: { id: number; week: string; starts_at: string; ends_at: string; status: string; total_votes: number };
   champion: RankingItem;
+  mascot_of_week: (RankingItem & { week: string }) | null;
   ranking: RankingItem[];
   hall_of_fame: HallEntry[];
+  next_challenger: { symbol: string; coin: string; title: string } | null;
+  last_rotation: { relegated: { symbol: string; coin: string; title: string }; promoted: { symbol: string; coin: string; title: string }; week: string } | null;
   can_vote: boolean;
   next_vote_at: string | null;
 };
@@ -80,7 +84,7 @@ export default function MascotArenaClient() {
   const [loadingVote, setLoadingVote] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
-  const rankingRef = useViewedEvent("ranking_view");
+  const rankingRef = useViewedEvent("mascot_ranking_view");
   const hallRef = useViewedEvent("hall_of_fame_view");
 
   const loadArena = useCallback(async () => {
@@ -104,7 +108,7 @@ export default function MascotArenaClient() {
 
   const ranking = useMemo<RankingItem[]>(() => arena?.ranking ?? MASCOTS.map((item, index) => ({
     symbol: item.symbol, coin: item.coin, title: item.title, position: index + 1,
-    votes: 0, percentage: 0, movement: 0,
+    votes: 0, percentage: 0, movement: 0, latest_news: null,
   })), [arena]);
   const champion = arena?.champion ?? ranking[0];
   const championMascot = mascotFor(champion.symbol) ?? MASCOTS[0];
@@ -161,7 +165,7 @@ export default function MascotArenaClient() {
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,.19),transparent_38%),radial-gradient(circle_at_80%_15%,rgba(124,58,237,.3),transparent_42%)]" />
         <div className="grid items-center lg:grid-cols-[.85fr_1.15fr]">
           <div className="relative min-h-[370px] overflow-hidden sm:min-h-[520px]">
-            <Image src={championMascot.image} alt={`${championMascot.title}, current AION Crypto Mascot Arena leader`} fill priority sizes="(max-width: 1024px) 100vw, 45vw" className="object-cover object-top" />
+            {championMascot.image ? <Image src={championMascot.image} alt={`${championMascot.title}, current AION Crypto Mascot Arena leader`} fill priority sizes="(max-width: 1024px) 100vw, 45vw" className="object-cover object-top" /> : <div className="flex min-h-[370px] items-center justify-center bg-gradient-to-br from-primary/40 via-card to-amber-400/20 sm:min-h-[520px]"><span className="font-display text-7xl font-black text-white">{champion.symbol}</span></div>}
             <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-card" />
             <span className="absolute left-4 top-4 rounded-full border border-amber-300/40 bg-black/70 px-3 py-1.5 text-[11px] font-bold tracking-[.18em] text-amber-200 backdrop-blur">CURRENT LEADER · #{champion.position}</span>
           </div>
@@ -177,7 +181,7 @@ export default function MascotArenaClient() {
               <div className="rounded-xl border border-line bg-black/20 p-3"><strong className="num block text-xl text-white">{roundCountdown}</strong><span className="text-[11px] text-ink-dim">Remaining</span></div>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a href="#contenders" className="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary-glow">VOTE NOW</a>
+              <a href="#contenders" onClick={() => track("mascot_champion_click", { coin: champion.symbol, source: "arena_hero" })} className="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary-glow">VOTE NOW</a>
               <a href="#ranking" className="rounded-xl border border-line bg-bg/60 px-5 py-3 text-sm font-semibold text-ink hover:border-primary/60">VIEW RANKING</a>
             </div>
             <p className="mt-4 text-xs text-ink-dim">Next vote: <span className="font-semibold text-ink">{nextVoteCountdown}</span></p>
@@ -192,7 +196,17 @@ export default function MascotArenaClient() {
         <p className="mt-1 text-sm text-ink-dim">See what {selected} is doing beyond the Arena.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <Link href={`/crypto/${selected}`} onClick={() => track("mascot_market_click", { coin: selected, mascot: mascotFor(selected)?.title ?? selected, destination: `/crypto/${selected}`, source: "post_vote" })} className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-bg">Open {selected} Market</Link>
-          <Link href={`/search?q=${selected}`} onClick={() => track("mascot_news_click", { coin: selected, mascot: mascotFor(selected)?.title ?? selected, destination: `/search?q=${selected}`, source: "post_vote" })} className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-white">Latest {selected} News</Link>
+          {ranking.find((item) => item.symbol === selected)?.latest_news ? <Link href={`/news/${ranking.find((item) => item.symbol === selected)!.latest_news!.slug}`} onClick={() => track("mascot_news_click", { coin: selected, mascot: mascotFor(selected)?.title ?? selected, destination: "latest_verified_news", source: "post_vote" })} className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-white">Latest {selected} News</Link> : <span className="rounded-lg border border-line px-4 py-2 text-sm text-ink-dim">Latest verified coverage coming soon.</span>}
+        </div>
+      </section>}
+
+      {arena?.mascot_of_week && <section className="mt-8 rounded-2xl border border-amber-400/30 bg-gradient-to-r from-amber-400/10 to-card p-5 sm:p-6">
+        <p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">Mascot of the Week · {arena.mascot_of_week.week}</p>
+        <h2 className="mt-2 font-display text-2xl font-bold text-white">{arena.mascot_of_week.coin} · {arena.mascot_of_week.title}</h2>
+        <p className="mt-2 text-sm text-ink-dim">Champion with {arena.mascot_of_week.votes.toLocaleString()} votes and the #1 final position.</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link href={`/crypto/${arena.mascot_of_week.symbol}`} onClick={() => track("mascot_champion_click", { coin: arena.mascot_of_week!.symbol, source: "weekly_champion_coin" })} className="rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-black">Champion Coin</Link>
+          {arena.mascot_of_week.latest_news ? <Link href={`/news/${arena.mascot_of_week.latest_news.slug}`} onClick={() => track("mascot_champion_click", { coin: arena.mascot_of_week!.symbol, source: "weekly_champion_news" })} className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-white">Latest News</Link> : <span className="rounded-lg border border-line px-4 py-2 text-sm text-ink-dim">Latest verified coverage coming soon.</span>}
         </div>
       </section>}
 
@@ -212,11 +226,11 @@ export default function MascotArenaClient() {
         <p className="text-xs font-bold uppercase tracking-[.2em] text-primary-glow">Choose your character</p>
         <h2 id="contenders-title" className="mt-1 font-display text-3xl font-bold text-white">Arena Contenders</h2>
         <div className="mt-5 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {MASCOTS.map((character, index) => {
-            const standing = ranking.find((item) => item.symbol === character.symbol)!;
-            return <article id={character.symbol.toLowerCase()} key={character.symbol} className={`group scroll-mt-28 overflow-hidden rounded-2xl border border-line bg-card shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${character.border}`}>
+          {ranking.map((standing, index) => {
+            const character = mascotFor(standing.symbol) ?? MASCOTS[0];
+            return <article id={standing.symbol.toLowerCase()} key={standing.symbol} className={`group scroll-mt-28 overflow-hidden rounded-2xl border border-line bg-card shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${character.border}`}>
               <div className="relative aspect-[2/3] overflow-hidden bg-bg-soft">
-                <Image src={character.image} alt={`${character.title}, AION Crypto character inspired by ${character.coin}`} width={1024} height={1536} priority={index === 0} sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.025]" />
+                {character.image ? <Image src={character.image} alt={`${character.title}, AION Crypto character inspired by ${character.coin}`} width={1024} height={1536} priority={index === 0} sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.025]" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/35 via-card to-amber-400/15"><span className="font-display text-6xl font-black text-white">{standing.symbol}</span></div>}
                 <div className={`absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t ${character.accent}`} />
                 <span className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/70 px-3 py-1 text-xs font-bold tracking-[.15em] text-white backdrop-blur">#{standing.position} · {character.symbol}</span>
                 {standing.position === 1 && <span className="absolute right-4 top-4 rounded-full bg-amber-400 px-3 py-1 text-[10px] font-black tracking-wide text-black">LEADER</span>}
@@ -231,13 +245,21 @@ export default function MascotArenaClient() {
                 <button onClick={() => void vote(character.symbol)} disabled={loadingVote !== null || arena?.can_vote === false} className="mt-3 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-glow disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Vote for ${character.title}`}>{loadingVote === character.symbol ? "COUNTING…" : arena?.can_vote === false ? `NEXT VOTE IN ${nextVoteCountdown}` : "VOTE"}</button>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
                   <Link href={`/crypto/${character.symbol}`} onClick={() => track("mascot_coin_click", { coin: character.symbol, mascot: character.title, destination: `/crypto/${character.symbol}`, source: "mascot_card" })} className="rounded-lg border border-line px-2 py-2 text-ink-dim hover:text-white">Price</Link>
-                  <Link href={`/search?q=${character.symbol}`} onClick={() => track("mascot_news_click", { coin: character.symbol, mascot: character.title, destination: `/search?q=${character.symbol}`, source: "mascot_card" })} className="rounded-lg border border-line px-2 py-2 text-ink-dim hover:text-white">News</Link>
+                  {standing.latest_news ? <Link href={`/news/${standing.latest_news.slug}`} onClick={() => track("mascot_news_click", { coin: character.symbol, mascot: character.title, destination: `/news/${standing.latest_news!.slug}`, source: "mascot_card" })} className="rounded-lg border border-line px-2 py-2 text-ink-dim hover:text-white">News</Link> : <span className="rounded-lg border border-line px-2 py-2 text-ink-dim" title="Latest verified coverage coming soon.">News soon</span>}
                   <button onClick={() => void share(character.symbol)} className="rounded-lg border border-line px-2 py-2 text-ink-dim hover:text-white">Share</button>
                 </div>
+                {!standing.latest_news && <p className="mt-3 text-xs text-ink-dim">Latest verified coverage coming soon.</p>}
               </div>
             </article>;
           })}
         </div>
+      </section>
+
+      <section className="mt-12 rounded-2xl border border-primary/30 bg-card p-5 sm:p-6" aria-labelledby="challenger-title">
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-primary-glow">Next Challenger</p>
+        <h2 id="challenger-title" className="mt-2 font-display text-2xl font-bold text-white">{arena?.next_challenger ? `${arena.next_challenger.coin} · ${arena.next_challenger.title}` : "Reserve queue is loading"}</h2>
+        <p className="mt-2 text-sm leading-6 text-ink-dim">At the weekly close, #1 becomes Mascot of the Week, #10 moves to the end of the reserve queue and this challenger enters the Top 10 automatically.</p>
+        {arena?.last_rotation && <p className="mt-3 text-xs text-ink-dim">Last rotation ({arena.last_rotation.week}): {arena.last_rotation.promoted.symbol} promoted · {arena.last_rotation.relegated.symbol} relegated.</p>}
       </section>
 
       <section ref={hallRef} className="mt-12" aria-labelledby="hall-title">

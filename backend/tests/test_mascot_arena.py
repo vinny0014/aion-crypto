@@ -61,6 +61,7 @@ def test_unknown_mascot_is_rejected(client):
 
 def test_expired_round_is_finalized_into_hall_of_fame(client):
     from app.db import get_sessionmaker
+    from app.models import Article
     from app.services.arena import arena_state, cast_vote
 
     db = get_sessionmaker()()
@@ -69,9 +70,33 @@ def test_expired_round_is_finalized_into_hall_of_fame(client):
         db, symbol="ETH", device_token="weekly-device-0001", client_ip="192.0.2.1",
         user_agent="test", source="test", now=first,
     )
+    db.add(Article(
+        slug="ethereum-weekly-update", title="Ethereum weekly update",
+        summary="Verified Ethereum coverage.", body="Verified body.",
+        category="Ethereum", related_asset="ETH", status="published",
+        published_at=first, is_fixture=False,
+    ))
+    db.commit()
     following_week = first + timedelta(days=8)
     state = arena_state(db, now=following_week)
     assert state["round"]["week"] != "2026-W33"
     assert state["hall_of_fame"][0]["symbol"] == "ETH"
     assert state["hall_of_fame"][0]["championships"] == 1
+    assert state["mascot_of_week"]["symbol"] == "ETH"
+    assert state["mascot_of_week"]["votes"] == 1
+    assert state["mascot_of_week"]["latest_news"]["slug"] == "ethereum-weekly-update"
+    assert len(state["ranking"]) == 10
+    assert "TON" in {item["symbol"] for item in state["ranking"]}
+    assert "DOT" not in {item["symbol"] for item in state["ranking"]}
+    assert state["last_rotation"] == {
+        "relegated": {"symbol": "DOT", "coin": "Polkadot", "title": "The Multiverse Conductor"},
+        "promoted": {"symbol": "TON", "coin": "Toncoin", "title": "The Network Voyager"},
+        "week": "2026-W33",
+    }
+    assert state["next_challenger"]["symbol"] == "MATIC"
+    with pytest.raises(ValueError, match="not active"):
+        cast_vote(
+            db, symbol="DOT", device_token="weekly-device-0002", client_ip="192.0.2.2",
+            user_agent="test", source="test", now=following_week,
+        )
     db.close()

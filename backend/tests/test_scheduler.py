@@ -29,6 +29,14 @@ def test_scheduler_runs_once_and_reports_status(client, monkeypatch):
     monkeypatch.setenv("SCHEDULER_TOKEN", "a" * 32)
     from app.config import get_settings
     get_settings.cache_clear()
+    async def live_snapshot():
+        return [
+            {"symbol": symbol, "name": symbol, "price": 100.0 + index,
+             "change_24h_pct": float(index - 3), "high_24h": 110.0 + index,
+             "low_24h": 90.0 + index, "volume_24h_quote": 1_000_000.0 + index}
+            for index, symbol in enumerate(("BTC", "ETH", "XRP", "SOL", "BNB", "DOGE", "ADA", "LINK"))
+        ], "binance"
+    monkeypatch.setattr("app.services.market_news._fetch_live_snapshot", live_snapshot)
     response = client.post("/internal/scheduler/run", headers={"X-Scheduler-Token": "a" * 32})
     assert response.status_code == 200
     assert response.json()["status"] == "success"
@@ -37,3 +45,9 @@ def test_scheduler_runs_once_and_reports_status(client, monkeypatch):
     db = get_sessionmaker()()
     assert scheduler_status(db)["status"] == "active"
     db.close()
+    public = client.get("/internal/scheduler/status")
+    assert public.status_code == 200
+    payload = public.json()
+    assert payload["last_result"] == "success"
+    assert payload["trigger"] == "scheduled"
+    assert "last_error" not in payload

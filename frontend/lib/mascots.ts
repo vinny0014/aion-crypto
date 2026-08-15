@@ -11,8 +11,22 @@ export const MASCOTS = [
   { coin: "Polkadot", symbol: "DOT", title: "The Multiverse Conductor", role: "Commander of connected worlds", image: "/mascots/polkadot-multiverse-conductor.webp", accent: "from-pink-500/30 via-fuchsia-500/10 to-transparent", border: "hover:border-pink-400/60", lore: "With many sovereign worlds moving in harmony, the Multiverse Conductor symbolizes interoperability and shared security.", quote: "Many worlds. One coordinated future." },
 ] as const;
 
-export type Mascot = (typeof MASCOTS)[number];
+export const CHALLENGER_MASCOTS = [
+  { coin: "Toncoin", symbol: "TON", title: "The Network Voyager", role: "Explorer of open networks", image: "", accent: "from-sky-400/25 via-blue-500/10 to-transparent", border: "hover:border-sky-400/60", lore: "A challenger navigating fast, connected digital territories with calm precision.", quote: "Every network opens a new horizon." },
+  { coin: "Polygon", symbol: "MATIC", title: "The Purple Pathfinder", role: "Guide across scaling frontiers", image: "", accent: "from-violet-400/25 via-purple-500/10 to-transparent", border: "hover:border-violet-400/60", lore: "A pathfinder built for the routes that connect applications, users and scalable execution.", quote: "The shortest path is the one we build." },
+  { coin: "Cosmos", symbol: "ATOM", title: "The Cosmos Navigator", role: "Navigator of sovereign chains", image: "", accent: "from-indigo-400/25 via-slate-500/10 to-transparent", border: "hover:border-indigo-400/60", lore: "A navigator charting safe passage between independent blockchain worlds.", quote: "Sovereign worlds can still travel together." },
+  { coin: "NEAR Protocol", symbol: "NEAR", title: "The Horizon Keeper", role: "Keeper of accessible systems", image: "", accent: "from-emerald-400/25 via-teal-500/10 to-transparent", border: "hover:border-emerald-400/60", lore: "A patient guardian watching the horizon for technology people can actually use.", quote: "The future belongs within reach." },
+  { coin: "Sui", symbol: "SUI", title: "The Tidal Blade", role: "Warrior of fluid execution", image: "", accent: "from-cyan-300/25 via-blue-500/10 to-transparent", border: "hover:border-cyan-300/60", lore: "A fast-moving challenger shaped by water, precision and object-centered design.", quote: "Flow around limits. Strike with clarity." },
+  { coin: "Aptos", symbol: "APT", title: "The Parallel Vanguard", role: "Vanguard of parallel systems", image: "", accent: "from-teal-300/25 via-slate-500/10 to-transparent", border: "hover:border-teal-300/60", lore: "A disciplined vanguard coordinating many paths of execution at once.", quote: "Many paths. One decisive advance." },
+  { coin: "Arbitrum", symbol: "ARB", title: "The Layer Guardian", role: "Guardian of rollup frontiers", image: "", accent: "from-blue-400/25 via-sky-500/10 to-transparent", border: "hover:border-blue-400/60", lore: "A guardian protecting the bridge between settlement and scalable execution.", quote: "Scale the frontier. Protect the foundation." },
+  { coin: "Injective", symbol: "INJ", title: "The Exchange Warden", role: "Warden of open markets", image: "", accent: "from-cyan-400/25 via-indigo-500/10 to-transparent", border: "hover:border-cyan-400/60", lore: "A market warden trained for speed, coordination and open financial rails.", quote: "Open markets demand disciplined guardians." },
+  { coin: "Litecoin", symbol: "LTC", title: "The Silver Ranger", role: "Ranger of resilient payments", image: "", accent: "from-slate-300/25 via-blue-500/10 to-transparent", border: "hover:border-slate-300/60", lore: "A veteran ranger carrying a long record of steady, resilient digital settlement.", quote: "Endurance is its own form of speed." },
+  { coin: "Uniswap", symbol: "UNI", title: "The Liquidity Alchemist", role: "Alchemist of decentralized exchange", image: "", accent: "from-pink-400/25 via-rose-500/10 to-transparent", border: "hover:border-pink-400/60", lore: "An alchemist balancing pools, routes and open access to decentralized markets.", quote: "Liquidity turns possibility into motion." },
+] as const;
+
+export const ALL_MASCOTS = [...MASCOTS, ...CHALLENGER_MASCOTS] as const;
+export type Mascot = (typeof ALL_MASCOTS)[number];
 
 export function mascotFor(symbol: string) {
-  return MASCOTS.find((mascot) => mascot.symbol === symbol.toUpperCase());
+  return ALL_MASCOTS.find((mascot) => mascot.symbol === symbol.toUpperCase());
 }

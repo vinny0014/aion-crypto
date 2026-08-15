@@ -38,6 +38,12 @@ def upgrade() -> None:
         sa.Column("ends_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("champion_symbol", sa.String(20), nullable=False, server_default=""),
         sa.Column("top_three_json", sa.Text(), nullable=False, server_default="[]"),
+        sa.Column("roster_json", sa.Text(), nullable=False, server_default="[]"),
+        sa.Column("reserve_json", sa.Text(), nullable=False, server_default="[]"),
+        sa.Column("next_roster_json", sa.Text(), nullable=False, server_default="[]"),
+        sa.Column("next_reserve_json", sa.Text(), nullable=False, server_default="[]"),
+        sa.Column("relegated_symbol", sa.String(20), nullable=False, server_default=""),
+        sa.Column("promoted_symbol", sa.String(20), nullable=False, server_default=""),
         sa.Column("finalized_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )

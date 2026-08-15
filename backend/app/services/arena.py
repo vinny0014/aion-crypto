@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import MascotArenaRound, MascotArenaVote
+from app.models import Article, MascotArenaRound, MascotArenaVote
 
 
 MASCOTS: tuple[dict[str, str], ...] = (
@@ -25,8 +25,22 @@ MASCOTS: tuple[dict[str, str], ...] = (
     {"symbol": "AVAX", "coin": "Avalanche", "title": "The Crimson Mountaineer"},
     {"symbol": "DOT", "coin": "Polkadot", "title": "The Multiverse Conductor"},
 )
-MASCOT_SYMBOLS = {item["symbol"] for item in MASCOTS}
-SEED_POSITION = {item["symbol"]: index for index, item in enumerate(MASCOTS)}
+RESERVE_MASCOTS: tuple[dict[str, str], ...] = (
+    {"symbol": "TON", "coin": "Toncoin", "title": "The Network Voyager"},
+    {"symbol": "MATIC", "coin": "Polygon", "title": "The Purple Pathfinder"},
+    {"symbol": "ATOM", "coin": "Cosmos", "title": "The Cosmos Navigator"},
+    {"symbol": "NEAR", "coin": "NEAR Protocol", "title": "The Horizon Keeper"},
+    {"symbol": "SUI", "coin": "Sui", "title": "The Tidal Blade"},
+    {"symbol": "APT", "coin": "Aptos", "title": "The Parallel Vanguard"},
+    {"symbol": "ARB", "coin": "Arbitrum", "title": "The Layer Guardian"},
+    {"symbol": "INJ", "coin": "Injective", "title": "The Exchange Warden"},
+    {"symbol": "LTC", "coin": "Litecoin", "title": "The Silver Ranger"},
+    {"symbol": "UNI", "coin": "Uniswap", "title": "The Liquidity Alchemist"},
+)
+ALL_MASCOTS = (*MASCOTS, *RESERVE_MASCOTS)
+MASCOT_SYMBOLS = {item["symbol"] for item in ALL_MASCOTS}
+STARTING_ROSTER = [item["symbol"] for item in MASCOTS]
+STARTING_RESERVE = [item["symbol"] for item in RESERVE_MASCOTS]
 
 
 def utcnow() -> datetime:
@@ -53,22 +67,52 @@ def _vote_counts(db: Session, round_id: int) -> dict[str, int]:
     return {symbol: int(count) for symbol, count in rows}
 
 
-def _ordered_counts(counts: dict[str, int]) -> list[tuple[str, int]]:
+def _symbols(value: str, fallback: list[str]) -> list[str]:
+    try:
+        parsed = json.loads(value or "[]")
+    except (TypeError, ValueError):
+        return list(fallback)
+    valid = [symbol for symbol in parsed if isinstance(symbol, str) and symbol in MASCOT_SYMBOLS]
+    return valid if len(valid) == len(set(valid)) and valid else list(fallback)
+
+
+def _round_roster(round_: MascotArenaRound) -> list[str]:
+    roster = _symbols(round_.roster_json, STARTING_ROSTER)
+    return roster if len(roster) == 10 else list(STARTING_ROSTER)
+
+
+def _round_reserve(round_: MascotArenaRound) -> list[str]:
+    roster = set(_round_roster(round_))
+    reserve = [symbol for symbol in _symbols(round_.reserve_json, STARTING_RESERVE) if symbol not in roster]
+    missing = [item["symbol"] for item in ALL_MASCOTS if item["symbol"] not in roster and item["symbol"] not in reserve]
+    return [*reserve, *missing]
+
+
+def _ordered_counts(counts: dict[str, int], roster: list[str]) -> list[tuple[str, int]]:
+    seed_position = {symbol: index for index, symbol in enumerate(roster)}
     return sorted(
-        ((item["symbol"], counts.get(item["symbol"], 0)) for item in MASCOTS),
-        key=lambda item: (-item[1], SEED_POSITION[item[0]]),
+        ((symbol, counts.get(symbol, 0)) for symbol in roster),
+        key=lambda item: (-item[1], seed_position[item[0]]),
     )
 
 
 def _finalize(db: Session, round_: MascotArenaRound, now: datetime) -> None:
-    ordered = _ordered_counts(_vote_counts(db, round_.id))
-    total = sum(count for _, count in ordered)
-    round_.champion_symbol = ordered[0][0] if total else ""
+    roster = _round_roster(round_)
+    reserve = _round_reserve(round_)
+    ordered = _ordered_counts(_vote_counts(db, round_.id), roster)
+    round_.champion_symbol = ordered[0][0]
     round_.top_three_json = json.dumps(
         [{"symbol": symbol, "votes": count, "position": index + 1} for index, (symbol, count) in enumerate(ordered[:3])]
     )
     round_.status = "completed"
     round_.finalized_at = now
+    if reserve:
+        round_.relegated_symbol = ordered[-1][0]
+        round_.promoted_symbol = reserve[0]
+        next_roster = [symbol for symbol, _count in ordered if symbol != round_.relegated_symbol]
+        next_roster.append(round_.promoted_symbol)
+        round_.next_roster_json = json.dumps(next_roster)
+        round_.next_reserve_json = json.dumps([*reserve[1:], round_.relegated_symbol])
 
 
 def ensure_current_round(db: Session, now: datetime | None = None) -> MascotArenaRound:
@@ -90,8 +134,17 @@ def ensure_current_round(db: Session, now: datetime | None = None) -> MascotAren
     if current is not None:
         return current
 
+    previous = db.execute(
+        select(MascotArenaRound)
+        .where(MascotArenaRound.status == "completed")
+        .order_by(MascotArenaRound.ends_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    roster = _symbols(previous.next_roster_json, STARTING_ROSTER) if previous else STARTING_ROSTER
+    reserve = _symbols(previous.next_reserve_json, STARTING_RESERVE) if previous else STARTING_RESERVE
     current = MascotArenaRound(
-        week_key=week_key, status="active", starts_at=starts_at, ends_at=ends_at
+        week_key=week_key, status="active", starts_at=starts_at, ends_at=ends_at,
+        roster_json=json.dumps(roster), reserve_json=json.dumps(reserve),
     )
     db.add(current)
     try:
@@ -128,17 +181,41 @@ def _previous_positions(db: Session, current_id: int) -> dict[str, int]:
     ).scalar_one_or_none()
     if previous is None:
         return {}
-    return {symbol: index + 1 for index, (symbol, _) in enumerate(_ordered_counts(_vote_counts(db, previous.id)))}
+    return {
+        symbol: index + 1
+        for index, (symbol, _) in enumerate(_ordered_counts(_vote_counts(db, previous.id), _round_roster(previous)))
+    }
+
+
+def _latest_news(db: Session, symbols: list[str]) -> dict[str, dict]:
+    articles = db.execute(
+        select(Article).where(
+            Article.related_asset.in_(symbols),
+            Article.status.in_(("published", "updated")),
+            Article.published_at.is_not(None), Article.is_fixture.is_(False),
+        ).order_by(Article.published_at.desc()).limit(100)
+    ).scalars()
+    result: dict[str, dict] = {}
+    for article in articles:
+        if article.related_asset not in result:
+            result[article.related_asset] = {
+                "slug": article.slug, "title": article.title,
+                "published_at": _aware(article.published_at),
+            }
+    return result
 
 
 def arena_state(db: Session, *, voter: str | None = None, now: datetime | None = None) -> dict:
     now = _aware(now or utcnow())
     round_ = ensure_current_round(db, now)
+    roster = _round_roster(round_)
+    reserve = _round_reserve(round_)
     counts = _vote_counts(db, round_.id)
-    ordered = _ordered_counts(counts)
+    ordered = _ordered_counts(counts, roster)
     total = sum(count for _, count in ordered)
     previous = _previous_positions(db, round_.id)
-    metadata = {item["symbol"]: item for item in MASCOTS}
+    metadata = {item["symbol"]: item for item in ALL_MASCOTS}
+    latest_news = _latest_news(db, [item["symbol"] for item in ALL_MASCOTS])
     ranking = []
     for index, (symbol, count) in enumerate(ordered):
         position = index + 1
@@ -149,6 +226,7 @@ def arena_state(db: Session, *, voter: str | None = None, now: datetime | None =
             "votes": count,
             "percentage": round((count / total) * 100, 1) if total else 0.0,
             "movement": old_position - position,
+            "latest_news": latest_news.get(symbol),
         })
 
     completed = db.execute(
@@ -164,13 +242,31 @@ def arena_state(db: Session, *, voter: str | None = None, now: datetime | None =
     for item in completed:
         top_three = json.loads(item.top_three_json or "[]")
         winning_votes = next((entry["votes"] for entry in top_three if entry["symbol"] == item.champion_symbol), 0)
+        completed_total = sum(_vote_counts(db, item.id).values())
         hall.append({
             **metadata[item.champion_symbol],
             "week": item.week_key,
             "votes": winning_votes,
             "position": 1,
+            "percentage": round((winning_votes / completed_total) * 100, 1) if completed_total else 0.0,
+            "movement": 0,
+            "latest_news": latest_news.get(item.champion_symbol),
             "championships": title_counts[item.champion_symbol],
         })
+
+    latest_completed = completed[0] if completed else None
+    mascot_of_week = None
+    if latest_completed:
+        winning = json.loads(latest_completed.top_three_json or "[]")
+        winning_votes = next((entry["votes"] for entry in winning if entry["symbol"] == latest_completed.champion_symbol), 0)
+        winning_total = sum(_vote_counts(db, latest_completed.id).values())
+        mascot_of_week = {
+            **metadata[latest_completed.champion_symbol], "position": 1,
+            "votes": winning_votes, "week": latest_completed.week_key,
+            "percentage": round((winning_votes / winning_total) * 100, 1) if winning_total else 0.0,
+            "movement": 0,
+            "latest_news": latest_news.get(latest_completed.champion_symbol),
+        }
 
     next_vote_at = None
     can_vote = True
@@ -197,8 +293,15 @@ def arena_state(db: Session, *, voter: str | None = None, now: datetime | None =
             "total_votes": total,
         },
         "champion": ranking[0],
+        "mascot_of_week": mascot_of_week,
         "ranking": ranking,
         "hall_of_fame": hall,
+        "next_challenger": metadata[reserve[0]] if reserve else None,
+        "last_rotation": ({
+            "relegated": metadata[latest_completed.relegated_symbol],
+            "promoted": metadata[latest_completed.promoted_symbol],
+            "week": latest_completed.week_key,
+        } if latest_completed and latest_completed.relegated_symbol and latest_completed.promoted_symbol else None),
         "can_vote": can_vote,
         "next_vote_at": next_vote_at,
     }
@@ -225,6 +328,8 @@ def cast_vote(
     if symbol not in MASCOT_SYMBOLS:
         raise ValueError("unknown mascot")
     round_ = ensure_current_round(db, now)
+    if symbol not in _round_roster(round_):
+        raise ValueError("mascot is not active in this round")
     voter = voter_hash(device_token, client_ip, user_agent)
     ip = ip_hash(client_ip)
     latest = db.execute(
