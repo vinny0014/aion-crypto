@@ -8,7 +8,7 @@ function escapeXml(value: string) {
 }
 
 export function GET() {
-  const images = MASCOTS.map((mascot) => `
+  const images = MASCOTS.filter((mascot) => mascot.image).map((mascot) => `
     <image:image>
       <image:loc>${SITE_URL}${mascot.image}</image:loc>
       <image:title>${escapeXml(`${mascot.coin} — ${mascot.title}`)}</image:title>

@@ -7,6 +7,49 @@ import { useEffect } from "react";
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
+export const REQUIRED_ANALYTICS_EVENTS = [
+  "mascot_arena_view",
+  "mascot_vote",
+  "mascot_news_click",
+  "mascot_coin_click",
+  "mascot_ranking_view",
+  "mascot_share",
+  "mascot_champion_click",
+  "mascot_relegation_view",
+  "mascot_challenger_click",
+  "article_view",
+  "news_click",
+  "market_click",
+  "coin_click",
+  "related_article_click",
+  "newsletter_click",
+] as const;
+
+type LinkEvent = { name: string; params: Record<string, string> };
+
+export function linkAnalyticsEvents(currentPath: string, destination: string, explicit?: string): LinkEvent[] {
+  const events: LinkEvent[] = [];
+  const add = (name: string, params: Record<string, string>) => {
+    if (!events.some((event) => event.name === name)) events.push({ name, params });
+  };
+  const params = { destination };
+  if (explicit) add(explicit, params);
+  if (destination === "/newsletter") add("newsletter_click", params);
+  if (destination === "/news" || destination.startsWith("/news/")) {
+    add("news_click", params);
+    if (currentPath.startsWith("/news/") && destination.startsWith("/news/") && destination !== currentPath) {
+      add("related_article_click", params);
+    }
+  }
+  if (destination === "/markets") add("market_click", params);
+  if (destination.startsWith("/crypto/")) {
+    const coin = destination.split("/")[2]?.toUpperCase() ?? "";
+    add("market_click", { ...params, coin });
+    add("coin_click", { ...params, coin });
+  }
+  return events;
+}
+
 export function track(event: string, params: Record<string, string | number | boolean> = {}) {
   if (typeof window !== "undefined" && GA_ID && "gtag" in window) {
     (window as typeof window & { gtag: (...args: unknown[]) => void }).gtag("event", event, params);
@@ -29,18 +72,31 @@ export default function Analytics() {
       if (!(anchor instanceof HTMLAnchorElement)) return;
       const url = new URL(anchor.href, window.location.origin);
       if (url.origin !== window.location.origin) return;
-      const explicit = anchor.dataset.analyticsEvent;
-      if (explicit) track(explicit, { destination: url.pathname });
-      if (url.pathname === "/news" || url.pathname.startsWith("/news/")) {
-        track("news_click", { destination: url.pathname });
-      }
-      if (url.pathname === "/markets" || url.pathname.startsWith("/crypto/")) {
-        track("market_click", { destination: url.pathname });
+      for (const analyticsEvent of linkAnalyticsEvents(pathname, url.pathname, anchor.dataset.analyticsEvent)) {
+        track(analyticsEvent.name, analyticsEvent.params);
       }
     };
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
-  }, []);
+  }, [pathname]);
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-analytics-view-event]"));
+    if (!nodes.length || typeof IntersectionObserver === "undefined") return;
+    const seen = new WeakSet<Element>();
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting || seen.has(entry.target)) continue;
+        const node = entry.target as HTMLElement;
+        const event = node.dataset.analyticsViewEvent;
+        if (!event) continue;
+        seen.add(node);
+        track(event, { page_path: pathname });
+        observer.unobserve(node);
+      }
+    }, { threshold: 0.35 });
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [pathname]);
   if (!GA_ID && !CLARITY_ID) return null;
   return <>
     {GA_ID && <Script id="ga" src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />}

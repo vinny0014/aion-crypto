@@ -4,12 +4,12 @@ import { MASCOTS } from "../../lib/mascots";
 
 export const metadata: Metadata = {
   title: "Mascot Arena — Battle for the Crown",
-  description: "Vote in the AION Crypto Mascot Arena. Follow the live weekly ranking for Bitcoin, Ethereum, XRP, Solana and six more original crypto characters.",
+  description: "Vote in the AION Crypto Mascot Arena. Follow the live weekly ranking for 15 original crypto characters.",
   keywords: ["crypto mascots", "cryptocurrency characters", "Bitcoin mascot", "Ethereum mascot", "XRP mascot", "crypto character arena"],
   alternates: { canonical: "/mascot-arena" },
   openGraph: {
     title: "Mascot Arena — Battle for the Crown",
-    description: "Ten crypto mascots. One weekly champion. Choose your character and follow the live ranking.",
+    description: "Fifteen crypto mascots. One weekly champion. Choose your character and follow the live ranking.",
     url: "/mascot-arena", type: "website",
     images: [{ url: "/mascots/bitcoin-viking-king-v2.webp", width: 1024, height: 1536, alt: "Bitcoin Viking King holding a golden shield" }],
   },

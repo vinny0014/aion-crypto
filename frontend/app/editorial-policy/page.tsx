@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Editorial Policy",
-  description: "Every news item must trace to an identifiable, credible source — official announcements, regulatory filings, primary documents or reputable outlets — ",
+  description: "How AION Crypto sources, verifies, labels and corrects news and analysis produced with an automation-assisted editorial workflow.",
   alternates: { canonical: "/editorial-policy" },
 };
 

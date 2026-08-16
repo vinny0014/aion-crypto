@@ -113,7 +113,8 @@ export default function MascotArenaClient() {
   const champion = arena?.champion ?? ranking[0];
   const championMascot = mascotFor(champion.symbol) ?? MASCOTS[0];
   const roundCountdown = formatCountdown(arena?.round.ends_at ?? null, now);
-  const nextVoteCountdown = arena?.can_vote === false ? formatCountdown(arena.next_vote_at, now) : "Available now";
+  const canVoteNow = arena?.can_vote !== false || Boolean(arena.next_vote_at && Date.parse(arena.next_vote_at) <= now);
+  const nextVoteCountdown = canVoteNow ? "Available now" : formatCountdown(arena?.next_vote_at ?? null, now);
 
   async function vote(symbol: string) {
     const item = ranking.find((entry) => entry.symbol === symbol);
@@ -163,24 +164,24 @@ export default function MascotArenaClient() {
     <div className="pb-20 pt-7 sm:pt-10">
       <section className="relative isolate overflow-hidden rounded-3xl border border-line bg-card shadow-card">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,.19),transparent_38%),radial-gradient(circle_at_80%_15%,rgba(124,58,237,.3),transparent_42%)]" />
-        <div className="grid items-center lg:grid-cols-[.85fr_1.15fr]">
-          <div className="relative min-h-[370px] overflow-hidden sm:min-h-[520px]">
-            {championMascot.image ? <Image src={championMascot.image} alt={`${championMascot.title}, current AION Crypto Mascot Arena leader`} fill priority sizes="(max-width: 1024px) 100vw, 45vw" className="object-cover object-top" /> : <div className="flex min-h-[370px] items-center justify-center bg-gradient-to-br from-primary/40 via-card to-amber-400/20 sm:min-h-[520px]"><span className="font-display text-7xl font-black text-white">{champion.symbol}</span></div>}
+        <div className="grid items-center lg:grid-cols-[.72fr_1.28fr]">
+          <div className="relative min-h-[280px] overflow-hidden sm:min-h-[340px]">
+            {championMascot.image ? <Image src={championMascot.image} alt={`${championMascot.title}, current AION Crypto Mascot Arena leader`} fill priority sizes="(max-width: 1024px) 100vw, 40vw" className="object-cover object-top" /> : <div className="flex min-h-[280px] items-center justify-center bg-gradient-to-br from-primary/40 via-card to-amber-400/20 sm:min-h-[340px]"><span className="font-display text-7xl font-black text-white">{champion.symbol}</span></div>}
             <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-card" />
             <span className="absolute left-4 top-4 rounded-full border border-amber-300/40 bg-black/70 px-3 py-1.5 text-[11px] font-bold tracking-[.18em] text-amber-200 backdrop-blur">CURRENT LEADER · #{champion.position}</span>
           </div>
-          <div className="px-5 pb-9 pt-2 sm:px-9 lg:py-12 lg:pr-14">
+          <div className="px-5 pb-7 pt-2 sm:px-8 lg:py-8 lg:pr-12">
             <p className="text-xs font-bold uppercase tracking-[.24em] text-primary-glow">Mascot Arena</p>
-            <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">Battle for the Crown</h1>
-            <p className="mt-5 text-sm font-semibold uppercase tracking-[.15em] text-amber-300">{championMascot.coin}</p>
-            <h2 className="mt-1 font-display text-3xl font-bold text-white">{championMascot.title}</h2>
-            <p className="mt-3 max-w-xl text-base leading-7 text-ink-dim">Ten original crypto characters compete in a live weekly vote. Choose your champion, follow the ranking and return when your next vote opens.</p>
-            <div className="mt-7 grid grid-cols-3 gap-2 text-center">
+            <h1 className="mt-2 font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">Battle for the Crown</h1>
+            <p className="mt-3 text-sm font-semibold uppercase tracking-[.15em] text-amber-300">{championMascot.coin}</p>
+            <h2 className="mt-1 font-display text-2xl font-bold text-white">{championMascot.title}</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-ink-dim">Fifteen original crypto characters compete in a live weekly vote. Choose your champion and follow every move.</p>
+            <div className="mt-5 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-xl border border-line bg-black/20 p-3"><strong className="num block text-xl text-white">{champion.votes.toLocaleString()}</strong><span className="text-[11px] text-ink-dim">Leader votes</span></div>
               <div className="rounded-xl border border-line bg-black/20 p-3"><strong className="num block text-xl text-white">{arena?.round.total_votes.toLocaleString() ?? "—"}</strong><span className="text-[11px] text-ink-dim">Weekly votes</span></div>
               <div className="rounded-xl border border-line bg-black/20 p-3"><strong className="num block text-xl text-white">{roundCountdown}</strong><span className="text-[11px] text-ink-dim">Remaining</span></div>
             </div>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               <a href="#contenders" onClick={() => track("mascot_champion_click", { coin: champion.symbol, source: "arena_hero" })} className="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary-glow">VOTE NOW</a>
               <a href="#ranking" className="rounded-xl border border-line bg-bg/60 px-5 py-3 text-sm font-semibold text-ink hover:border-primary/60">VIEW RANKING</a>
             </div>
@@ -211,7 +212,7 @@ export default function MascotArenaClient() {
       </section>}
 
       <section id="ranking" ref={rankingRef} className="mt-10 scroll-mt-24" aria-labelledby="ranking-title">
-        <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-primary-glow">Live standings</p><h2 id="ranking-title" className="mt-1 font-display text-3xl font-bold text-white">Weekly Top 10</h2></div><span className="chip">{arena?.round.week ?? "Loading round"}</span></div>
+        <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-primary-glow">Live standings</p><h2 id="ranking-title" className="mt-1 font-display text-3xl font-bold text-white">Weekly Top 15</h2></div><span className="chip">{arena?.round.week ?? "Loading round"}</span></div>
         <div className="overflow-hidden rounded-2xl border border-line bg-card shadow-card">
           {ranking.map((item) => <div key={item.symbol} className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line px-4 py-3 last:border-0 sm:grid-cols-[52px_1fr_100px_90px] sm:px-5">
             <span className="num text-xl font-bold text-white">#{item.position}</span>
@@ -225,41 +226,43 @@ export default function MascotArenaClient() {
       <section id="contenders" className="mt-12 scroll-mt-24" aria-labelledby="contenders-title">
         <p className="text-xs font-bold uppercase tracking-[.2em] text-primary-glow">Choose your character</p>
         <h2 id="contenders-title" className="mt-1 font-display text-3xl font-bold text-white">Arena Contenders</h2>
-        <div className="mt-5 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-5">
           {ranking.map((standing, index) => {
             const character = mascotFor(standing.symbol) ?? MASCOTS[0];
-            return <article id={standing.symbol.toLowerCase()} key={standing.symbol} className={`group scroll-mt-28 overflow-hidden rounded-2xl border border-line bg-card shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${character.border}`}>
-              <div className="relative aspect-[2/3] overflow-hidden bg-bg-soft">
-                {character.image ? <Image src={character.image} alt={`${character.title}, AION Crypto character inspired by ${character.coin}`} width={1024} height={1536} priority={index === 0} sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.025]" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/35 via-card to-amber-400/15"><span className="font-display text-6xl font-black text-white">{standing.symbol}</span></div>}
-                <div className={`absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t ${character.accent}`} />
-                <span className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/70 px-3 py-1 text-xs font-bold tracking-[.15em] text-white backdrop-blur">#{standing.position} · {character.symbol}</span>
-                {standing.position === 1 && <span className="absolute right-4 top-4 rounded-full bg-amber-400 px-3 py-1 text-[10px] font-black tracking-wide text-black">LEADER</span>}
+            return <article id={standing.symbol.toLowerCase()} key={standing.symbol} className={`group scroll-mt-28 overflow-hidden rounded-xl border border-line bg-card shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${character.border}`}>
+              <div className="relative aspect-[4/5] overflow-hidden bg-bg-soft">
+                {character.image ? <Image src={character.image} alt={`${character.title}, AION Crypto character inspired by ${character.coin}`} width={1024} height={1280} priority={index < 2} sizes="(max-width: 767px) 50vw, (max-width: 1535px) 33vw, 20vw" className="h-full w-full object-cover object-top transition duration-700 group-hover:scale-[1.025]" /> : <div className={`flex h-full items-center justify-center bg-gradient-to-br ${character.accent} via-card to-bg-soft`}><span className="font-display text-3xl font-black tracking-tight text-white sm:text-5xl">{standing.symbol}</span></div>}
+                <div className={`absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t ${character.accent}`} />
+                <span className="absolute left-2 top-2 rounded-full border border-white/20 bg-black/70 px-2 py-1 text-[10px] font-bold tracking-[.12em] text-white backdrop-blur">#{standing.position} · {character.symbol}</span>
+                {standing.position === 1 && <span className="absolute right-2 top-2 rounded-full bg-amber-400 px-2 py-1 text-[9px] font-black tracking-wide text-black">LEADER</span>}
               </div>
-              <div className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-[.18em] text-primary-glow">{character.coin}</p>
-                <h3 className="mt-2 font-display text-2xl font-bold text-white">{character.title}</h3>
-                <p className="mt-1 text-sm font-medium text-ink">{character.role}</p>
-                <p className="mt-4 text-sm leading-6 text-ink-dim">{character.lore}</p>
-                <blockquote className="mt-4 border-l-2 border-primary pl-3 text-sm italic text-ink">“{character.quote}”</blockquote>
-                <div className="mt-5 flex items-center justify-between text-xs"><span className="num font-semibold text-white">{standing.votes.toLocaleString()} votes</span><span className="text-ink-dim">{standing.percentage}%</span></div>
-                <button onClick={() => void vote(character.symbol)} disabled={loadingVote !== null || arena?.can_vote === false} className="mt-3 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-glow disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Vote for ${character.title}`}>{loadingVote === character.symbol ? "COUNTING…" : arena?.can_vote === false ? `NEXT VOTE IN ${nextVoteCountdown}` : "VOTE"}</button>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
-                  <Link href={`/crypto/${character.symbol}`} onClick={() => track("mascot_coin_click", { coin: character.symbol, mascot: character.title, destination: `/crypto/${character.symbol}`, source: "mascot_card" })} className="rounded-lg border border-line px-2 py-2 text-ink-dim hover:text-white">Price</Link>
-                  {standing.latest_news ? <Link href={`/news/${standing.latest_news.slug}`} onClick={() => track("mascot_news_click", { coin: character.symbol, mascot: character.title, destination: `/news/${standing.latest_news!.slug}`, source: "mascot_card" })} className="rounded-lg border border-line px-2 py-2 text-ink-dim hover:text-white">News</Link> : <span className="rounded-lg border border-line px-2 py-2 text-ink-dim" title="Latest verified coverage coming soon.">News soon</span>}
-                  <button onClick={() => void share(character.symbol)} className="rounded-lg border border-line px-2 py-2 text-ink-dim hover:text-white">Share</button>
+              <div className="p-3 sm:p-4">
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[.14em] text-primary-glow">{character.coin}</p>
+                <h3 className="mt-1 min-h-9 font-display text-base font-bold leading-tight text-white sm:text-lg">{character.title}</h3>
+                <p className="mt-1 hidden truncate text-xs text-ink md:block">{character.role}</p>
+                <div className="mt-3 flex items-center justify-between text-[11px]"><span className="num font-semibold text-white">{standing.votes.toLocaleString()} votes</span><span className="text-ink-dim">{standing.percentage}%</span></div>
+                <button onClick={() => void vote(character.symbol)} disabled={loadingVote !== null || !canVoteNow} className="mt-2 w-full rounded-lg bg-primary px-2 py-2 text-xs font-bold text-white hover:bg-primary-glow disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Vote for ${character.title}`}>{loadingVote === character.symbol ? "COUNTING…" : canVoteNow ? "VOTE" : "VOTED · 24H"}</button>
+                <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[10px]">
+                  <Link href={`/crypto/${character.symbol}`} onClick={() => track("mascot_coin_click", { coin: character.symbol, mascot: character.title, destination: `/crypto/${character.symbol}`, source: "mascot_card" })} className="rounded-md border border-line px-1 py-1.5 text-ink-dim hover:text-white">Price</Link>
+                  {standing.latest_news ? <Link href={`/news/${standing.latest_news.slug}`} onClick={() => track("mascot_news_click", { coin: character.symbol, mascot: character.title, destination: `/news/${standing.latest_news!.slug}`, source: "mascot_card" })} className="rounded-md border border-line px-1 py-1.5 text-ink-dim hover:text-white">Story</Link> : <span className="rounded-md border border-line px-1 py-1.5 text-ink-dim" title="Latest verified coverage coming soon.">Story</span>}
+                  <button onClick={() => void share(character.symbol)} className="rounded-md border border-line px-1 py-1.5 text-ink-dim hover:text-white">Share</button>
                 </div>
-                {!standing.latest_news && <p className="mt-3 text-xs text-ink-dim">Latest verified coverage coming soon.</p>}
+                <div className="mt-2 border-t border-line pt-2">
+                  <p className="text-[9px] font-bold uppercase tracking-[.14em] text-ink-dim">Latest Story</p>
+                  {standing.latest_news ? <Link href={`/news/${standing.latest_news.slug}`} className="mt-1 line-clamp-2 block text-[11px] leading-4 text-ink hover:text-primary-glow">{standing.latest_news.title}</Link> : <p className="mt-1 text-[10px] leading-4 text-ink-dim">Verified coverage coming soon.</p>}
+                </div>
               </div>
             </article>;
           })}
         </div>
       </section>
 
-      <section className="mt-12 rounded-2xl border border-primary/30 bg-card p-5 sm:p-6" aria-labelledby="challenger-title">
+      <section className="mt-12 rounded-2xl border border-primary/30 bg-card p-5 sm:p-6" aria-labelledby="challenger-title" data-analytics-view-event="mascot_relegation_view">
         <p className="text-xs font-bold uppercase tracking-[.2em] text-primary-glow">Next Challenger</p>
         <h2 id="challenger-title" className="mt-2 font-display text-2xl font-bold text-white">{arena?.next_challenger ? `${arena.next_challenger.coin} · ${arena.next_challenger.title}` : "Reserve queue is loading"}</h2>
-        <p className="mt-2 text-sm leading-6 text-ink-dim">At the weekly close, #1 becomes Mascot of the Week, #10 moves to the end of the reserve queue and this challenger enters the Top 10 automatically.</p>
+        <p className="mt-2 text-sm leading-6 text-ink-dim">At the weekly close, #1 becomes Mascot of the Week, #15 moves to the end of the reserve queue and this challenger enters the Top 15 automatically.</p>
         {arena?.last_rotation && <p className="mt-3 text-xs text-ink-dim">Last rotation ({arena.last_rotation.week}): {arena.last_rotation.promoted.symbol} promoted · {arena.last_rotation.relegated.symbol} relegated.</p>}
+        {arena?.next_challenger && <Link href={`/crypto/${arena.next_challenger.symbol}`} data-analytics-event="mascot_challenger_click" className="mt-4 inline-flex rounded-lg border border-primary/40 px-3 py-2 text-xs font-bold text-primary-glow hover:bg-primary/10 hover:text-white">Meet {arena.next_challenger.symbol} →</Link>}
       </section>
 
       <section ref={hallRef} className="mt-12" aria-labelledby="hall-title">

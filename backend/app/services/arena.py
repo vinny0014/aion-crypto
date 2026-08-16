@@ -13,6 +13,9 @@ from app.config import get_settings
 from app.models import Article, MascotArenaRound, MascotArenaVote
 
 
+ACTIVE_MASCOT_COUNT = 15
+HISTORICAL_ROSTER_COUNTS = frozenset((10, ACTIVE_MASCOT_COUNT))
+
 MASCOTS: tuple[dict[str, str], ...] = (
     {"symbol": "BTC", "coin": "Bitcoin", "title": "The Viking King"},
     {"symbol": "ETH", "coin": "Ethereum", "title": "The Sovereign"},
@@ -24,13 +27,17 @@ MASCOTS: tuple[dict[str, str], ...] = (
     {"symbol": "LINK", "coin": "Chainlink", "title": "The Oracle Sentinel"},
     {"symbol": "AVAX", "coin": "Avalanche", "title": "The Crimson Mountaineer"},
     {"symbol": "DOT", "coin": "Polkadot", "title": "The Multiverse Conductor"},
+    {"symbol": "SHIB", "coin": "Shiba Inu", "title": "The Shiba Sentinel"},
+    {"symbol": "PEPE", "coin": "Pepe", "title": "The Meme Trickster"},
+    {"symbol": "HYPE", "coin": "Hyperliquid", "title": "The Perpetual Warden"},
+    {"symbol": "TRX", "coin": "TRON", "title": "The Network Regent"},
+    {"symbol": "SUI", "coin": "Sui", "title": "The Tidal Blade"},
 )
 RESERVE_MASCOTS: tuple[dict[str, str], ...] = (
     {"symbol": "TON", "coin": "Toncoin", "title": "The Network Voyager"},
     {"symbol": "MATIC", "coin": "Polygon", "title": "The Purple Pathfinder"},
     {"symbol": "ATOM", "coin": "Cosmos", "title": "The Cosmos Navigator"},
     {"symbol": "NEAR", "coin": "NEAR Protocol", "title": "The Horizon Keeper"},
-    {"symbol": "SUI", "coin": "Sui", "title": "The Tidal Blade"},
     {"symbol": "APT", "coin": "Aptos", "title": "The Parallel Vanguard"},
     {"symbol": "ARB", "coin": "Arbitrum", "title": "The Layer Guardian"},
     {"symbol": "INJ", "coin": "Injective", "title": "The Exchange Warden"},
@@ -78,7 +85,9 @@ def _symbols(value: str, fallback: list[str]) -> list[str]:
 
 def _round_roster(round_: MascotArenaRound) -> list[str]:
     roster = _symbols(round_.roster_json, STARTING_ROSTER)
-    return roster if len(roster) == 10 else list(STARTING_ROSTER)
+    # Completed Top 10 rounds remain valid historical records. New rounds are
+    # always created with ACTIVE_MASCOT_COUNT entrants.
+    return roster if len(roster) in HISTORICAL_ROSTER_COUNTS else list(STARTING_ROSTER)
 
 
 def _round_reserve(round_: MascotArenaRound) -> list[str]:
@@ -140,8 +149,20 @@ def ensure_current_round(db: Session, now: datetime | None = None) -> MascotAren
         .order_by(MascotArenaRound.ends_at.desc())
         .limit(1)
     ).scalar_one_or_none()
-    roster = _symbols(previous.next_roster_json, STARTING_ROSTER) if previous else STARTING_ROSTER
-    reserve = _symbols(previous.next_reserve_json, STARTING_RESERVE) if previous else STARTING_RESERVE
+    roster = _symbols(previous.next_roster_json, STARTING_ROSTER) if previous else list(STARTING_ROSTER)
+    # A completed Top 10 round remains readable but cannot constrain the new
+    # Top 15 format. This does not update the historical row or its votes.
+    if len(roster) != ACTIVE_MASCOT_COUNT:
+        roster = list(STARTING_ROSTER)
+    if previous:
+        reserve = _symbols(previous.next_reserve_json, STARTING_RESERVE)
+        reserve = [symbol for symbol in reserve if symbol not in roster]
+        reserve.extend(
+            item["symbol"] for item in ALL_MASCOTS
+            if item["symbol"] not in roster and item["symbol"] not in reserve
+        )
+    else:
+        reserve = list(STARTING_RESERVE)
     current = MascotArenaRound(
         week_key=week_key, status="active", starts_at=starts_at, ends_at=ends_at,
         roster_json=json.dumps(roster), reserve_json=json.dumps(reserve),
@@ -273,7 +294,7 @@ def arena_state(db: Session, *, voter: str | None = None, now: datetime | None =
     if voter:
         latest = db.execute(
             select(MascotArenaVote)
-            .where(MascotArenaVote.round_id == round_.id, MascotArenaVote.voter_hash == voter)
+            .where(MascotArenaVote.voter_hash == voter)
             .order_by(MascotArenaVote.voted_at.desc())
             .limit(1)
         ).scalar_one_or_none()
@@ -334,7 +355,7 @@ def cast_vote(
     ip = ip_hash(client_ip)
     latest = db.execute(
         select(MascotArenaVote)
-        .where(MascotArenaVote.round_id == round_.id, MascotArenaVote.voter_hash == voter)
+        .where(MascotArenaVote.voter_hash == voter)
         .order_by(MascotArenaVote.voted_at.desc())
         .limit(1)
     ).scalar_one_or_none()

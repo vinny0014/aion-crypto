@@ -18,9 +18,10 @@ class VoteRequest(BaseModel):
 
 
 def _client_ip(request: Request) -> str:
-    # Production's trusted reverse proxy appends this header. Hashing happens
-    # immediately in the service; raw network addresses are never persisted.
-    forwarded = request.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
+    # Render appends the address it observed to X-Forwarded-For. The rightmost
+    # hop is therefore proxy-authenticated; the leftmost value may be supplied
+    # by a client and must never drive vote-abuse controls.
+    forwarded = request.headers.get("x-forwarded-for", "").rsplit(",", 1)[-1].strip()
     return forwarded or (request.client.host if request.client else "unknown")
 
 
