@@ -89,8 +89,8 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
 
   await page.goto("/mascot-arena", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 1, name: "Battle for the Crown" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Weekly Top 10" })).toBeVisible();
-  await expect(page.getByRole("article")).toHaveCount(10);
+  await expect(page.getByRole("heading", { level: 2, name: "Weekly Top 15" })).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(15);
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /bitcoin-viking-king-v2\.webp/);
   const arenaAccessibility = await new AxeBuilder({ page }).analyze();
   expect(arenaAccessibility.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical")).toEqual([]);

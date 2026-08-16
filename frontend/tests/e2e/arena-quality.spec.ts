@@ -6,7 +6,7 @@ const SYMBOLS = [
   "AVAX", "DOT", "SHIB", "PEPE", "HYPE", "TRX", "SUI",
 ] as const;
 
-const ARENA_API = "http://127.0.0.1:3100/api/v1/mascot-arena";
+const ARENA_API = "**/api/v1/mascot-arena";
 
 function arenaState() {
   const publishedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -61,9 +61,7 @@ test("Arena loads 15 verified stories through one aggregate request", async ({ p
 
   const cards = page.locator("#contenders article");
   await expect(cards).toHaveCount(15);
-  expect(await cards.evaluateAll((nodes) => nodes.every((node) => Boolean(
-    node.querySelector('a[href^="/news/latest-"]'),
-  )))).toBe(true);
+  await expect(cards.locator('a[href^="/news/latest-"]')).toHaveCount(15);
   await expect(page.locator('[data-analytics-view-event="mascot_relegation_view"]')).toHaveCount(1);
   await expect(page.locator('[data-analytics-event="mascot_challenger_click"]')).toHaveCount(1);
   expect(arenaRequests).toHaveLength(1);
@@ -88,13 +86,12 @@ test("Arena keeps the required 2/3/5-column responsive grid without overflow", a
     await page.goto("/mascot-arena", { waitUntil: "domcontentloaded" });
     const cards = page.locator("#contenders article");
     await expect(cards).toHaveCount(15);
-    const firstRowTop = (await cards.nth(0).boundingBox())?.y;
-    expect(firstRowTop, `${width}px first card`).toBeDefined();
-    const firstRowCount = await cards.evaluateAll((nodes, top) => nodes.filter((node) => {
-      const y = (node as HTMLElement).getBoundingClientRect().y;
-      return Math.abs(y - Number(top)) < 2;
-    }).length, firstRowTop);
-    expect(firstRowCount, `${width}px columns`).toBe(expectedColumns);
+    await expect(cards.first()).toBeVisible();
+    const renderedColumns = await cards.first().evaluate((node) => {
+      const grid = node.parentElement;
+      return grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length : 0;
+    });
+    expect(renderedColumns, `${width}px columns`).toBe(expectedColumns);
     expect(await page.evaluate(() => document.documentElement.scrollWidth), `${width}px overflow`).toBeLessThanOrEqual(width);
   }
 });
