@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FIXTURE_ARTICLES, FIXTURE_TABLE } from "@/lib/fixtures";
+import { FIXTURE_TABLE } from "../../lib/fixtures";
+import { getPublishedArticles } from "../../lib/api";
 
-export const metadata: Metadata = { title: "Search", alternates: { canonical: "/search" } };
+export const metadata: Metadata = { title: "Search", alternates: { canonical: "/search" }, robots: { index: false, follow: true } };
 
-export default function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
-  const q = (searchParams.q ?? "").trim().toLowerCase();
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q: rawQuery } = await searchParams;
+  const q = (rawQuery ?? "").trim().toLowerCase();
+  const published = await getPublishedArticles();
   const coins = q ? FIXTURE_TABLE.filter((c) => c.symbol.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)) : [];
-  const articles = q ? FIXTURE_ARTICLES.filter((a) => (a.title + a.summary + a.tag).toLowerCase().includes(q)) : [];
+  const articles = q ? published.filter((a) => (a.title + a.summary + a.category + a.related_asset).toLowerCase().includes(q)) : [];
   return (
     <div className="mx-auto max-w-3xl py-6">
       <h1 className="font-display text-2xl font-bold">Search</h1>

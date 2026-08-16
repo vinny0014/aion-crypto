@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getMarketsTable } from "@/lib/api";
-import { CoinDot, Delta, SourceTag, Unavailable } from "@/components/ui";
-import { fmtUsd } from "@/lib/format";
+import { getMarketsTable, getMascotArena } from "../../lib/api";
+import { CoinDot, Delta, SourceTag, Unavailable } from "../../components/ui";
+import { fmtUsd } from "../../lib/format";
 
 export const revalidate = 60;
 export const metadata: Metadata = {
@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 };
 
 export default async function MarketsPage() {
-  const table = await getMarketsTable();
+  const [table, arena] = await Promise.all([getMarketsTable(), getMascotArena()]);
+  const leaders = arena?.ranking.slice(0, 3) ?? [];
   return (
     <div className="py-5">
       <div className="flex items-center justify-between">
@@ -56,6 +57,13 @@ export default async function MarketsPage() {
       ) : (
         <div className="mt-4"><Unavailable what="Market table" /></div>
       )}
+      <section className="card mt-4 border-amber-400/20 p-4" aria-labelledby="arena-leaders-title">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-amber-300">Battle for the Crown</p><h2 id="arena-leaders-title" className="mt-1 font-display text-lg font-bold text-white">Arena Leaders</h2></div>
+          <Link href="/mascot-arena#ranking" className="text-xs font-semibold text-primary-glow hover:text-white">View Top 15 →</Link>
+        </div>
+        {leaders.length ? <ol className="mt-3 grid gap-2 sm:grid-cols-3">{leaders.map((leader) => <li key={leader.symbol} className="rounded-lg border border-line bg-bg-soft p-3"><div className="flex items-center justify-between"><Link href={`/mascot-arena#${leader.symbol.toLowerCase()}`} className="font-display text-sm font-bold text-white hover:text-primary-glow">#{leader.position} {leader.symbol}</Link><span className="num text-xs text-ink-dim">{leader.percentage}%</span></div><p className="mt-1 truncate text-[11px] text-ink-dim">{leader.title} · {leader.votes.toLocaleString()} votes</p></li>)}</ol> : <p className="mt-3 text-xs text-ink-dim">Live Arena leaders will appear when the current round connects.</p>}
+      </section>
     </div>
   );
 }

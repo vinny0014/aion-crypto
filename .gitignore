@@ -11,6 +11,9 @@ out/
 dist/
 build/
 *.egg-info/
+*.tsbuildinfo
+playwright-report/
+test-results/
 
 # env & secrets
 .env

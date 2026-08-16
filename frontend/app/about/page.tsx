@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "About AION Crypto",
-  description: "AION Crypto is a crypto market intelligence portal. We combine real-time market data from public exchange APIs with news, analysis and educational gui",
+  description: "AION Crypto combines real-time public market data with sourced crypto news, analysis and educational guides.",
   alternates: { canonical: "/about" },
 };
 
@@ -16,7 +16,7 @@ export default function Page() {
       </section>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">How we work</h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Market data comes from public APIs (Binance, with CoinGecko as fallback) and is always labeled with its source and freshness. Editorial content follows our editorial policy: sourced, dated, and clearly separated from opinion.</p>
+        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Market data comes from public APIs (Binance, with CoinGecko as fallback) and is always labeled with its source and freshness. Automation assists discovery, deduplication, workflow checks, formatting and distribution preparation. Editorial content must remain sourced, dated and clearly separated from opinion; automation does not imply human eyewitness reporting.</p>
       </section>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">What we are not</h2>

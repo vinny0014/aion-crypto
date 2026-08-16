@@ -1,16 +1,17 @@
 import Link from "next/link";
-import type { GlobalMetrics, Kline, TickerCoin, Wrapped } from "@/lib/api";
-import { FIXTURE_ARTICLES, FIXTURE_INSIGHT } from "@/lib/fixtures";
-import { fmtNum, fmtPct, fmtUsd } from "@/lib/format";
+import Image from "next/image";
+import type { GlobalMetrics, Kline, MascotArenaState, PublishedArticle, TickerCoin, Wrapped } from "../lib/api";
+import { fmtNum, fmtPct, fmtUsd } from "../lib/format";
 import { AreaChart, Donut, FearGreedGauge, Sparkline } from "./charts";
 import { CoinDot, Delta, SectionTitle, SourceTag, Unavailable } from "./ui";
+import { mascotFor } from "../lib/mascots";
 
 // ── 1. Coin ticker strip ─────────────────────────────────────────
 export function TickerBar({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
   if (!ticker.data) return null;
   return (
-    <div className="-mx-3 border-b border-line bg-bg-soft/60 sm:-mx-5">
-      <div className="mx-auto flex max-w-[1400px] items-center gap-5 overflow-x-auto px-3 py-2 sm:px-5 scroll-thin">
+    <div className="border-b border-line bg-bg-soft/60">
+      <div className="mx-auto flex max-w-[1400px] items-center gap-5 overflow-x-auto px-3 py-2 sm:px-5 scroll-thin" role="region" aria-label="Live cryptocurrency ticker" tabIndex={0}>
         {ticker.data.map((c) => (
           <Link key={c.symbol} href={`/crypto/${c.symbol}`} className="flex shrink-0 items-center gap-2 text-[12.5px]">
             <CoinDot symbol={c.symbol} />
@@ -33,13 +34,13 @@ export function GlobalMetricsBar({ g }: { g: Wrapped<GlobalMetrics> }) {
         ["Market Cap", fmtUsd(d.market_cap_usd, true), d.market_cap_change_24h_pct],
         ["24h Volume", fmtUsd(d.volume_24h_usd, true), null],
         ["BTC Dominance", `${d.btc_dominance_pct.toFixed(1)}%`, null],
-        ["ETH Dominance", `${d.eth_dominance_pct.toFixed(1)}%`, null],
+        ...(d.eth_dominance_pct == null ? [] : [["ETH Dominance", `${d.eth_dominance_pct.toFixed(1)}%`, null] as [string, string, number | null]]),
         ["Active Cryptos", fmtNum(d.active_cryptocurrencies), null],
       ]
     : [];
   return (
-    <div className="-mx-3 border-b border-line sm:-mx-5">
-      <div className="mx-auto flex max-w-[1400px] items-stretch gap-6 overflow-x-auto px-3 py-3 sm:px-5 scroll-thin">
+    <div className="border-b border-line">
+      <div className="mx-auto flex max-w-[1400px] items-stretch gap-6 overflow-x-auto px-3 py-3 sm:px-5 scroll-thin" role="region" aria-label="Global cryptocurrency market metrics" tabIndex={0}>
         {d ? (
           items.map(([label, value, delta]) => (
             <div key={label} className="shrink-0">
@@ -60,14 +61,10 @@ export function GlobalMetricsBar({ g }: { g: Wrapped<GlobalMetrics> }) {
 }
 
 // ── 3. Hero + Latest News + Breadth column ───────────────────────
-function heroArticle() {
-  return FIXTURE_ARTICLES[0];
-}
-
-export function HeroRow({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
-  const hero = heroArticle();
-  const latest = FIXTURE_ARTICLES.slice(1, 5);
-  const mostRead = [...FIXTURE_ARTICLES].sort((a, b) => a.hoursAgo - b.hoursAgo).slice(0, 5);
+export function HeroRow({ ticker, articles }: { ticker: Wrapped<TickerCoin[]>; articles: PublishedArticle[] }) {
+  const hero = articles[0];
+  const latest = articles.slice(1, 5);
+  const moreCoverage = articles.slice(0, 5);
   const coins = ticker.data ?? [];
   const upShare = coins.length ? Math.round((coins.filter((c) => c.change_24h_pct >= 0).length / coins.length) * 100) : null;
 
@@ -80,17 +77,17 @@ export function HeroRow({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
           className="pointer-events-none absolute inset-0 opacity-60"
           style={{ background: "radial-gradient(600px 260px at 85% 20%, rgba(124,58,237,.35), transparent 60%), radial-gradient(400px 200px at 10% 90%, rgba(34,211,238,.15), transparent 60%)" }}
         />
-        <div className="relative">
+        {hero ? <div className="relative">
           <div className="flex gap-2">
             <span className="rounded-md bg-accent-red px-2 py-0.5 text-[11px] font-bold uppercase text-white">Top Story</span>
-            <span className="chip">{hero.tag}</span>
+            {hero.related_asset && <span className="chip">{hero.related_asset}</span>}
           </div>
-          <h1 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
+          <h2 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
             <Link href={`/news/${hero.slug}`} className="hover:text-primary-glow">{hero.title}</Link>
-          </h1>
+          </h2>
           <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-dim">{hero.summary}</p>
           <div className="mt-4 flex items-center gap-3 text-[12px] text-ink-dim">
-            <span>AION Crypto Desk</span>·<span>{hero.hoursAgo}h ago</span>·<span>{hero.minutes} min read</span>
+            <span>{hero.author}</span>·<time dateTime={hero.published_at}>{new Date(hero.published_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC</time>
           </div>
           <Link
             href={`/news/${hero.slug}`}
@@ -98,7 +95,7 @@ export function HeroRow({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
           >
             Read more
           </Link>
-        </div>
+        </div> : <div className="relative"><span className="chip">Editorial desk</span><h2 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">Verified coverage is being prepared</h2><p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-dim">AION Crypto publishes database-backed articles only after source, originality and compliance checks. Development fixtures are not shown as news.</p><Link href="/sources-methodology" className="mt-5 inline-block text-sm text-primary-glow">See our methodology</Link></div>}
       </article>
 
       {/* Latest news */}
@@ -109,27 +106,29 @@ export function HeroRow({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
             <li key={a.slug} className="py-3 first:pt-0 last:pb-0">
               <Link href={`/news/${a.slug}`} className="group block">
                 <div className="flex items-center gap-2 text-[11px] text-ink-dim">
-                  <span className="chip">{a.tag}</span><span>{a.hoursAgo}h ago</span>
+                  <span className="chip">{a.related_asset || a.category}</span><time dateTime={a.published_at}>{new Date(a.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}</time>
                 </div>
                 <div className="mt-1 text-[13.5px] font-medium leading-snug group-hover:text-primary-glow">{a.title}</div>
               </Link>
             </li>
           ))}
+          {!latest.length && <li className="py-3 text-[13px] text-ink-dim">No additional verified stories are published yet.</li>}
         </ul>
       </div>
 
       {/* Most read + market breadth */}
       <div className="grid gap-4">
         <div className="card p-4">
-          <SectionTitle href="/news" linkLabel="More">Most Read</SectionTitle>
+          <SectionTitle href="/news" linkLabel="More">More Coverage</SectionTitle>
           <ol className="space-y-2.5">
-            {mostRead.map((a, i) => (
+            {moreCoverage.map((a, i) => (
               <li key={a.slug} className="flex gap-2.5">
                 <span className="num mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 text-[11px] font-bold text-primary-glow">{i + 1}</span>
                 <Link href={`/news/${a.slug}`} className="text-[13px] leading-snug text-ink-dim hover:text-ink">{a.title}</Link>
               </li>
             ))}
           </ol>
+          {!moreCoverage.length && <p className="text-[13px] text-ink-dim">No sourced coverage is available yet.</p>}
         </div>
         <div className="card p-4 text-center">
           <SectionTitle>Market Breadth</SectionTitle>
@@ -202,7 +201,7 @@ export function MarketRow({
       <div className="grid gap-4">
         <div className="card p-4">
           <SectionTitle href="/markets">Market Dominance</SectionTitle>
-          {dom ? (
+          {dom && dom.eth_dominance_pct != null ? (
             <div className="flex items-center gap-4">
               <Donut
                 slices={[
@@ -223,13 +222,13 @@ export function MarketRow({
         </div>
         <div className="card border-primary/30 p-4">
           <div className="mb-2 flex items-center gap-2">
-            <span className="chip border-primary/40 text-primary-glow">AI</span>
+            <span className="chip border-primary/40 text-primary-glow">DATA</span>
             <h2 className="text-[13px] font-semibold uppercase tracking-wide">Market Summary</h2>
           </div>
-          {FIXTURE_INSIGHT.paragraphs.map((p) => (
-            <p key={p.slice(0, 20)} className="mt-2 text-[13px] leading-relaxed text-ink-dim">{p}</p>
-          ))}
-          <p className="mt-3 text-[11px] text-ink-dim/80">{FIXTURE_INSIGHT.disclaimer}</p>
+          {g.status !== "sample" && table.status !== "sample" && dom && coins.length ? <>
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">Among the {coins.length} tracked assets, {coins.filter((coin) => coin.change_24h_pct >= 0).length} have a non-negative 24-hour change. Bitcoin dominance is {dom.btc_dominance_pct.toFixed(1)}%.</p>
+            <p className="mt-3 text-[11px] text-ink-dim/80">Deterministic summary of the labeled market data above. Informational only.</p><div className="mt-2"><SourceTag p={g} /></div>
+          </> : <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">A verified market summary is unavailable while live or cached provider data cannot be confirmed. Sample fixtures are not summarized as current conditions.</p>}
         </div>
       </div>
     </section>
@@ -293,27 +292,28 @@ export function MoversRow({ table }: { table: Wrapped<TickerCoin[]> }) {
 }
 
 // ── 6. Articles grid ─────────────────────────────────────────────
-export function ArticlesGrid() {
+export function ArticlesGrid({ articles }: { articles: PublishedArticle[] }) {
   return (
     <section className="mt-6">
       <SectionTitle href="/news" linkLabel="View All Articles">Latest Articles</SectionTitle>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {FIXTURE_ARTICLES.map((a) => (
+        {articles.slice(0, 6).map((a) => (
           <Link key={a.slug} href={`/news/${a.slug}`} className="card group overflow-hidden">
             <div
               aria-hidden
               className="flex h-24 items-end p-3"
               style={{ background: "linear-gradient(135deg, rgba(124,58,237,.5), rgba(34,211,238,.18)), #111119" }}
             >
-              <span className="rounded bg-bg/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-glow">{a.tag}</span>
+              <span className="rounded bg-bg/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-glow">{a.related_asset || a.category}</span>
             </div>
             <div className="p-3">
               <h3 className="text-[13.5px] font-semibold leading-snug group-hover:text-primary-glow">{a.title}</h3>
-              <div className="mt-2 text-[11px] text-ink-dim">{a.hoursAgo}h ago · {a.minutes} min read</div>
+              <time className="mt-2 block text-[11px] text-ink-dim" dateTime={a.published_at}>{new Date(a.published_at).toLocaleDateString("en-US", { dateStyle: "medium", timeZone: "UTC" })}</time>
             </div>
           </Link>
         ))}
       </div>
+      {!articles.length && <div className="card p-5 text-sm text-ink-dim">No verified articles are published yet.</div>}
     </section>
   );
 }
@@ -326,13 +326,31 @@ export function NewsletterBand() {
         <h2 className="font-display text-lg font-bold">Stay updated</h2>
         <p className="text-[13px] text-ink-dim">Weekly crypto market intelligence in your inbox. No spam, unsubscribe anytime.</p>
       </div>
-      <form action="/newsletter" method="get" className="flex w-full max-w-sm gap-2">
-        <input
-          type="email" name="email" required placeholder="Enter your email" aria-label="Email address"
-          className="w-full rounded-lg border border-line bg-bg-soft px-3 py-2 text-sm placeholder:text-ink-dim focus:border-primary focus:outline-none"
-        />
-        <button className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-glow">Subscribe</button>
-      </form>
+      <Link href="/newsletter" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-glow">Choose alerts</Link>
+    </section>
+  );
+}
+
+export function MascotArenaPreview({ arena }: { arena: MascotArenaState | null }) {
+  const champion = arena?.mascot_of_week ?? arena?.champion;
+  const mascot = mascotFor(champion?.symbol ?? "BTC")!;
+  const isWeeklyChampion = Boolean(arena?.mascot_of_week);
+  const top = arena?.ranking.slice(0, 3) ?? [];
+  return (
+    <section className="card mt-5 overflow-hidden border-amber-400/25">
+      <div className="grid items-center md:grid-cols-[220px_1fr]">
+        <div className="relative h-56 md:h-full md:min-h-[250px]">
+          {mascot.image ? <Image src={mascot.image} alt={`${mascot.title}, AION Crypto Mascot Arena champion`} fill sizes="(max-width: 768px) 100vw, 220px" className="object-cover object-top" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/35 via-card to-amber-400/15"><span className="font-display text-6xl font-black text-white">{champion?.symbol}</span></div>}
+          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent md:bg-gradient-to-r md:from-transparent md:to-card" />
+        </div>
+        <div className="p-5 sm:p-7">
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-amber-300">{isWeeklyChampion ? "Mascot of the Week" : "Mascot Arena · Battle for the Crown"}</p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-white">{mascot.title} {isWeeklyChampion ? "wears the crown" : "is leading the Arena"}</h2>
+          <p className="mt-2 text-sm text-ink-dim">{isWeeklyChampion ? `${mascot.coin} finished #1 with ${champion?.votes.toLocaleString() ?? 0} votes.` : "Choose one of fifteen original crypto characters and shape this week's ranking."}</p>
+          {top.length > 0 && <ol className="mt-4 flex flex-wrap gap-2">{top.map((item) => <li key={item.symbol} className="chip">#{item.position} {item.symbol} · {item.votes.toLocaleString()}</li>)}</ol>}
+          <div className="mt-5 flex flex-wrap gap-3"><Link href="/mascot-arena#contenders" data-analytics-event="mascot_champion_click" className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-glow">Vote Now</Link><Link href="/mascot-arena#ranking" data-analytics-event="mascot_champion_click" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">View Arena</Link>{champion?.latest_news ? <Link href={`/news/${champion.latest_news.slug}`} data-analytics-event="mascot_champion_click" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">Latest News</Link> : <span className="text-xs text-ink-dim">Latest verified coverage coming soon.</span>}</div>
+        </div>
+      </div>
     </section>
   );
 }

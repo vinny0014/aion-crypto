@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_aion.db")
 os.environ.setdefault("LAST_VALID_STORE_PATH", "data/test_last_valid.json")
+os.environ.setdefault("JWT_SECRET", "test-only-value-with-more-than-thirty-two-characters")
 
 import pytest  # noqa: E402
 
@@ -14,6 +15,13 @@ def clean_state(tmp_path, monkeypatch):
     # isolate persisted last-valid file per test
     monkeypatch.setenv("LAST_VALID_STORE_PATH", str(tmp_path / "last_valid.json"))
     from app.config import get_settings
+
     get_settings.cache_clear()
+    # the FastAPI app (and its middleware) is a module singleton, so the
+    # process-local rate-limit buckets would otherwise leak across tests and
+    # 429 later auth calls in the suite
+    from app.middleware import reset_rate_limits
+
+    reset_rate_limits()
     yield
     get_settings.cache_clear()

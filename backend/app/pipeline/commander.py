@@ -18,7 +18,7 @@ import traceback
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Task
@@ -44,8 +44,25 @@ class Commander:
 
     # ── enqueue ────────────────────────────────────────────────────
 
-    def enqueue(self, kind: str, payload: dict | None = None, max_attempts: int = 3) -> Task:
-        task = Task(kind=kind, payload=json.dumps(payload or {}), max_attempts=max_attempts)
+    def enqueue(
+        self,
+        kind: str,
+        payload: dict | None = None,
+        max_attempts: int = 3,
+        idempotency_key: str | None = None,
+    ) -> Task:
+        if idempotency_key:
+            existing = self.session.execute(
+                select(Task).where(Task.idempotency_key == idempotency_key)
+            ).scalar_one_or_none()
+            if existing is not None:
+                return existing
+        task = Task(
+            kind=kind,
+            payload=json.dumps(payload or {}),
+            max_attempts=max(1, max_attempts),
+            idempotency_key=idempotency_key,
+        )
         self.session.add(task)
         self.session.commit()
         return task
@@ -61,6 +78,7 @@ class Commander:
         for t in stuck:
             t.status = "queued"
             t.locked_at = None
+            t.available_at = utcnow()
             t.last_error = (t.last_error + "\n[recovered after lock timeout]").strip()
         self.session.commit()
         return len(stuck)
@@ -68,9 +86,15 @@ class Commander:
     # ── claim & run ────────────────────────────────────────────────
 
     def _claim_next(self, exclude_ids: set[int]) -> Task | None:
-        stmt = select(Task).where(Task.status == "queued").order_by(Task.created_at)
+        now = utcnow()
+        stmt = select(Task).where(
+            Task.status == "queued",
+            or_(Task.available_at.is_(None), Task.available_at <= now),
+        ).order_by(Task.created_at)
         if exclude_ids:
             stmt = stmt.where(Task.id.not_in(exclude_ids))
+        if self.session.bind is not None and self.session.bind.dialect.name != "sqlite":
+            stmt = stmt.with_for_update(skip_locked=True)
         task = self.session.execute(stmt.limit(1)).scalar_one_or_none()
         if task is None:
             return None
@@ -117,6 +141,7 @@ class Commander:
                 else:
                     task.status = "queued"  # retried next cycle (backoff via scheduler)
                     task.locked_at = None
+                    task.available_at = utcnow() + timedelta(seconds=self._backoff_seconds(task.attempts))
                     stats["failed"] += 1
             self.session.commit()
         return stats

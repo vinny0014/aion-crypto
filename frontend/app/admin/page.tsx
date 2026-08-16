@@ -1,0 +1,81 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BACKEND, authenticatedFetch, resolveSession } from "../../lib/auth";
+import AdminEditorial from "../../components/AdminEditorial";
+
+type Overview = {
+  tasks: Record<string, number>;
+  open_incidents: number;
+  cost_guard: { band: string; month_spend_usd: number; monthly_limit_usd: number };
+  scheduler: { status: string };
+  agents: { status: string; registered: string[] };
+  content?: { published: number; drafts: number; rejected: number; sources: number; subscribers: number; social_prepared: number };
+};
+
+export default function AdminPage() {
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [state, setState] = useState<"loading" | "waking" | "signed_out" | "session_invalid" | "offline" | "forbidden" | "ready">("loading");
+  const busy = useRef(false);
+
+  const load = useCallback(async () => {
+    if (busy.current) return; // no duplicate concurrent checks (e.g. a double-clicked retry)
+    busy.current = true;
+    setState("loading");
+    try {
+      if (!BACKEND) { setState("offline"); return; }
+      const session = await resolveSession({ onProgress: () => setState("waking") });
+      if (session.status === "backend_unreachable") { setState("waking"); return; }
+      if (session.status === "session_invalid") { setState("session_invalid"); return; }
+      if (session.status !== "authenticated") { setState("signed_out"); return; }
+      if (session.user.role !== "admin" && session.user.role !== "editor") { setState("forbidden"); return; }
+      const response = await authenticatedFetch("/api/v1/admin/overview");
+      if (response.status === 401 || response.status === 403) { setState("forbidden"); return; }
+      if (!response.ok) { setState("waking"); return; }
+      setOverview(await response.json() as Overview);
+      setState("ready");
+    } catch { setState("waking"); }
+    finally { busy.current = false; }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  return (
+    <div className="py-6">
+      <h1 className="font-display text-2xl font-bold">Operations dashboard</h1>
+      <p className="mt-1 text-[13px] text-ink-dim">Protected production-readiness view for tasks, incidents and Cost Guard.</p>
+
+      {state === "loading" && <p className="mt-5 text-ink-dim" role="status">Loading operations status…</p>}
+      {(state === "signed_out" || state === "session_invalid") && (
+        <div className="card mt-5 p-5 text-sm text-ink-dim">
+          {state === "session_invalid" ? "Your session expired. " : ""}Sign in to view operations. <Link href="/login" className="text-primary-glow">Open sign in</Link>.
+        </div>
+      )}
+      {state === "waking" && (
+        <div className="card mt-5 flex flex-wrap items-center gap-3 p-5 text-sm text-accent-btc" role="status" aria-live="polite">
+          <span>Backend waking up… The operations API sleeps after inactivity and can take up to a minute to answer. Your session is still valid.</span>
+          <button onClick={() => void load()} className="rounded-lg border border-line px-3 py-1.5 font-medium text-ink hover:border-primary">Retry now</button>
+        </div>
+      )}
+      {state === "offline" && <div className="card mt-5 p-5 text-sm text-accent-red">Operations API is not configured in this build.</div>}
+      {state === "forbidden" && <div className="card mt-5 p-5 text-sm text-accent-red">This account does not have admin access.</div>}
+
+      {state === "ready" && overview && (
+        <><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <section className="card p-4"><h2 className="text-xs uppercase text-ink-dim">Cost Guard</h2><p className="mt-2 text-xl font-bold">{overview.cost_guard.band}</p><p className="text-xs text-ink-dim">${overview.cost_guard.month_spend_usd.toFixed(2)} / ${overview.cost_guard.monthly_limit_usd.toFixed(2)}</p></section>
+          <section className="card p-4"><h2 className="text-xs uppercase text-ink-dim">Open incidents</h2><p className="mt-2 text-xl font-bold">{overview.open_incidents}</p></section>
+          <section className="card p-4"><h2 className="text-xs uppercase text-ink-dim">Scheduler</h2><p className="mt-2 text-sm font-semibold">{overview.scheduler.status.replaceAll("_", " ")}</p></section>
+          <section className="card p-4"><h2 className="text-xs uppercase text-ink-dim">Agents</h2><p className="mt-2 text-sm font-semibold">{overview.agents.status.replaceAll("_", " ")}</p><p className="text-xs text-ink-dim">{overview.agents.registered.length} registered</p></section>
+          <section className="card p-4 md:col-span-2 xl:col-span-4">
+            <h2 className="text-xs uppercase text-ink-dim">Task queue</h2>
+            {Object.keys(overview.tasks).length ? (
+              <dl className="mt-3 flex flex-wrap gap-4">{Object.entries(overview.tasks).map(([status, count]) => <div key={status}><dt className="text-xs text-ink-dim">{status}</dt><dd className="text-lg font-bold">{count}</dd></div>)}</dl>
+            ) : <p className="mt-2 text-sm text-ink-dim">No tasks queued.</p>}
+          </section>
+          {overview.content && Object.entries(overview.content).map(([label, count]) => <section key={label} className="card p-4"><h2 className="text-xs uppercase text-ink-dim">{label.replaceAll("_", " ")}</h2><p className="mt-2 text-xl font-bold">{count}</p></section>)}
+        </div><AdminEditorial /></>
+      )}
+    </div>
+  );
+}

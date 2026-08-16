@@ -12,12 +12,15 @@ was used, so the frontend can always display provenance and freshness.
 """
 from __future__ import annotations
 
+import asyncio
+import logging
 import time
 from typing import Any, Optional
 
 import httpx
 
 from app.cache import LastValidStore, TTLCache
+from app.circuit_breaker import CircuitBreaker
 from app.config import get_settings
 
 # Static coin registry: symbol -> metadata. Prices always come from APIs;
@@ -44,7 +47,13 @@ COIN_REGISTRY: dict[str, dict[str, str]] = {
     "INJ": {"name": "Injective", "gecko_id": "injective-protocol", "category": "DeFi"},
     "LTC": {"name": "Litecoin", "gecko_id": "litecoin", "category": "Currency"},
     "UNI": {"name": "Uniswap", "gecko_id": "uniswap", "category": "DeFi"},
+    "SHIB": {"name": "Shiba Inu", "gecko_id": "shiba-inu", "category": "Meme"},
+    "PEPE": {"name": "Pepe", "gecko_id": "pepe", "category": "Meme"},
+    "HYPE": {"name": "Hyperliquid", "gecko_id": "hyperliquid", "category": "DeFi"},
+    "TRX": {"name": "TRON", "gecko_id": "tron", "category": "Smart Contracts"},
 }
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TICKER_SYMBOLS = ["BTC", "ETH", "XRP", "SOL", "BNB", "DOGE", "ADA", "LINK"]
 
@@ -61,10 +70,14 @@ class MarketService:
         self.cache = cache or TTLCache()
         self.last_valid = last_valid or LastValidStore(s.last_valid_store_path)
         self._client = client
+        self.breakers: dict[str, CircuitBreaker] = {}
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=self.settings.http_timeout_seconds)
+            self._client = httpx.AsyncClient(
+                timeout=self.settings.http_timeout_seconds,
+                headers={"Accept": "application/json", "User-Agent": "AION-Crypto/1.0 (public-market-data)"},
+            )
         return self._client
 
     async def close(self) -> None:
@@ -76,9 +89,21 @@ class MarketService:
 
     async def _fetch_json(self, url: str, params: dict | None = None) -> Any:
         client = await self._get_client()
-        resp = await client.get(url, params=params)
-        resp.raise_for_status()
-        return resp.json()
+        attempts = max(1, self.settings.http_retry_attempts)
+        for attempt in range(attempts):
+            try:
+                resp = await client.get(url, params=params)
+                # Keyless CoinGecko can transiently rate-limit by IP. Retry
+                # only transient upstream failures; client errors remain
+                # visible to the circuit breaker immediately.
+                if resp.status_code == 429 or resp.status_code >= 500:
+                    resp.raise_for_status()
+                resp.raise_for_status()
+                return resp.json()
+            except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError):
+                if attempt + 1 >= attempts:
+                    raise
+                await asyncio.sleep(0.25 * (2 ** attempt))
 
     def _wrap(self, data: Any, source: str, status: str = "live", stale: bool = False) -> dict:
         return {
@@ -99,13 +124,33 @@ class MarketService:
             return cached
 
         for source_name, fetcher in fetchers:
+            breaker = self.breakers.setdefault(
+                source_name,
+                CircuitBreaker(
+                    self.settings.circuit_breaker_failure_threshold,
+                    self.settings.circuit_breaker_recovery_seconds,
+                ),
+            )
+            if not breaker.allow_request():
+                logger.warning("market provider circuit open", extra={"provider": source_name, "cache_key": key})
+                continue
             try:
                 data = await fetcher()
+                breaker.record_success()
                 wrapped = self._wrap(data, source=source_name)
                 self.cache.set(key, wrapped, self.settings.market_cache_ttl_seconds)
                 self.last_valid.save(key, wrapped)
                 return wrapped
-            except Exception:
+            except Exception as exc:
+                breaker.record_failure()
+                status_code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+                logger.warning(
+                    "market provider request failed provider=%s cache_key=%s error_type=%s status_code=%s",
+                    source_name,
+                    key,
+                    type(exc).__name__,
+                    status_code,
+                )
                 continue
 
         stored = self.last_valid.load(key)
@@ -192,9 +237,27 @@ class MarketService:
                 "eth_dominance_pct": float(d["market_cap_percentage"]["eth"]),
                 "market_cap_change_24h_pct": float(d.get("market_cap_change_percentage_24h_usd") or 0.0),
                 "active_cryptocurrencies": int(d.get("active_cryptocurrencies") or 0),
+                "markets": int(d.get("markets") or 0),
+                "last_updated": int(d.get("updated_at") or 0) or None,
             }
 
-        return await self._resolve(key, [("coingecko", from_coingecko)])
+        async def from_coinpaprika() -> dict:
+            # CoinPaprika's public global endpoint does not publish ETH
+            # dominance.  Keep that field explicitly null instead of making a
+            # derived estimate appear as provider data.
+            raw = await self._fetch_json(f"{self.settings.coinpaprika_base_url}/global")
+            return {
+                "market_cap_usd": float(raw["market_cap_usd"]),
+                "volume_24h_usd": float(raw["volume_24h_usd"]),
+                "btc_dominance_pct": float(raw["bitcoin_dominance_percentage"]),
+                "eth_dominance_pct": None,
+                "market_cap_change_24h_pct": float(raw.get("market_cap_change_24h") or 0.0),
+                "active_cryptocurrencies": int(raw.get("cryptocurrencies_number") or 0),
+                "markets": None,
+                "last_updated": int(raw.get("last_updated") or 0) or None,
+            }
+
+        return await self._resolve(key, [("coingecko", from_coingecko), ("coinpaprika", from_coinpaprika)])
 
     async def get_coin(self, symbol: str) -> dict:
         symbol = symbol.upper()
@@ -249,7 +312,7 @@ class MarketService:
                 "image": None,
             }
 
-        return await self._resolve(key, [("coingecko", from_coingecko), ("binance", from_binance)])
+        return await self._resolve(key, [("binance", from_binance), ("coingecko", from_coingecko)])
 
     async def get_klines(self, symbol: str, interval: str = "1h", limit: int = 168) -> dict:
         symbol = symbol.upper()

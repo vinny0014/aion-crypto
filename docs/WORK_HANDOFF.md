@@ -1,54 +1,12 @@
-# WORK HANDOFF — AION Crypto → GPT Work review stage
+# Work handoff
 
-## Repository state
-- Local git repo, branch `main`, 8 conventional commits (see `git log`). **Not yet pushed**: the build environment has no GitHub credentials for `vinny0014`. First action: create `vinny0014/aion-crypto` (private), `git remote add origin … && git push -u origin main`, create `develop`, enable branch protection + secret scanning.
-- CI (`.github/workflows/ci.yml`): backend pytest, frontend typecheck+build, security job. Dependabot configured.
+This pre-review document was superseded on 2026-07-22 after direct inspection, dependency remediation, migration work, E2E screenshots, and deployment planning.
 
-## What is DONE and TESTED
-| Area | Status | Evidence |
-|---|---|---|
-| Backend boots, /health OK | ✅ | manual run + test |
-| Market layer: Binance→CoinGecko→cache→last-valid→unavailable | ✅ | 8 tests (incl. stale + unavailable paths) |
-| Cost Guard bands + ledger + blocking | ✅ | 4 tests |
-| Commander queue (lock/retry/backoff/DLQ/recovery/cycle-limit) | ✅ | 6 tests incl. regression |
-| JWT auth + roles + protected route | ✅ | API tests |
-| DB schema (users, articles, sources, tasks, cost, subscribers, watchlist, incidents) | ✅ | created via init_db |
-| Frontend production build, 30+ routes | ✅ | `npm run build` green |
-| Homepage structure vs mockup | ✅ (structural) | 18-point DOM assertion, all present |
-| Coin page with area+candle charts, stats, SEO, schema | ✅ | 200 on /crypto/BTC; 404 on unknown |
-| Sitemap, robots, canonical, OG, Organization/NewsArticle/Breadcrumb schema | ✅ | routes render |
-| Watchlist (add/remove/reorder/persist localStorage) | ✅ | client page |
-| No secrets in repo; .env.example complete | ✅ | CI secret scan |
+Use the current evidence:
 
-Test totals: backend **23 passed**; frontend typecheck + build green; production server smoke-tested.
+- [`../PRODUCTION_AUDIT.md`](../PRODUCTION_AUDIT.md)
+- [`../HOSTINGER_DEPLOY_PLAN.md`](../HOSTINGER_DEPLOY_PLAN.md)
+- [`../WORK_HANDOFF_FINAL.md`](../WORK_HANDOFF_FINAL.md)
+- [`VISUAL_AUDIT.md`](VISUAL_AUDIT.md)
 
-## Known environment caveat
-The sandbox cannot reach Binance/CoinGecko, so live-data paths return honest `unavailable`/fixtures here; the fallback chain itself is fully covered by mocked tests. **First validation on a normal machine: run both apps and confirm homepage badges turn `live`.**
-
-## NOT done (priority order for GPT Work)
-1. Push to GitHub; run CI; fix anything environment-specific.
-2. Pixel visual audit (screenshots 1440/768/390) vs mockup; close gaps listed in VISUAL_AUDIT.md (target ≥95% desktop).
-3. Admin UI (dashboard, agents, tasks/queue, cost, logs, incidents, settings) over the existing APIs — every page functional, "NOT CONNECTED/NO DATA" states, no decorative buttons.
-4. Pipeline agents on Commander: Discovery (RSS + dedup rules), Content (templates first), Verification gates, Image (template system 1200×630 + validation), SEO Publisher, Monitor Recovery loop, APScheduler wiring.
-5. Alembic baseline migration; switch prod to Supabase PostgreSQL (`psycopg`); backup automation.
-6. Rate limiting (login + public API), CSP, password recovery; audit logging.
-7. Fear&Greed via alternative.me API (free) to replace/augment Market Breadth; ETF flow & liquidations only if a legitimate free source exists — otherwise keep sections out.
-8. Newsletter: SMTP + double opt-in + unsubscribe endpoints (schema ready).
-9. GA4 wiring behind `VITE_GA_MEASUREMENT_ID` (no fake IDs); news-sitemap and image-sitemap once pipeline publishes.
-10. Videos/Podcasts/feature-strip sections when real content/tools exist.
-
-## Risks
-- Public API rate limits under traffic → tune TTL, add per-IP caching/CDN.
-- Hostinger shared hosting can't run Python → plan VPS for backend (documented).
-- Editorial fixtures must be replaced before any public launch (labeled as previews).
-
-## Environment variables
-See docs/ENVIRONMENT_VARIABLES.md. Production musts: strong JWT_SECRET, Supabase DATABASE_URL, real domain URLs.
-
-## Official domain update (2026-07-22)
-
-The project's single official production domain is **https://aioncrypto.cloud**, applied to canonical, Open Graph, Twitter Cards, Schema.org (Organization + WebSite/SearchAction), sitemap.xml, news-sitemap.xml, image-sitemap.xml, robots.txt (with Host + 3 sitemap entries) and RSS (/rss.xml). Central config: `frontend/lib/site.ts` (APP_NAME "AION Crypto", APP_SHORT_NAME "AIONCRYPTO", TAGLINE "Crypto Market Intelligence", REPOSITORY vinny0014/aion-crypto, DEPLOY_TARGET Hostinger). Dev/preview environments override via `NEXT_PUBLIC_SITE_URL`; production builds default to the official domain — no localhost, no Vercel URL, no other project's subdomain is ever emitted in production output. Contact emails now use @aioncrypto.cloud. DNS was NOT changed and nothing was published — this is configuration only.
-
-## Language & positioning update (2026-07-22)
-
-Official language: English only (DEFAULT/CONTENT/UI/SEO/ADMIN_LANGUAGE=en; `<html lang="en">`, OG locale en_US, RSS `<language>en</language>`, news-sitemap `<news:language>en</news:language>`). A full audit found zero Portuguese strings in the production frontend. i18n is prepared via `SUPPORTED_LOCALES` in `frontend/lib/site.ts` — extend it plus message catalogs to add languages later; only "en" is active. Positioning: the Home is a daily market-intelligence surface, ordered as live ticker → global metrics → hero/breaking news + market breadth → BTC chart + heatmap + dominance + AI-labeled insight → top gainers/losers/trending → Bitcoin & Ethereum snapshots + watchlist entry → latest articles → newsletter. It is not an article list.
+Important correction to the original Fable5 report: the supplied Git history contains **10 baseline commits**, not 9. The official-domain commit `c534653` is present. The domain has not been published and DNS has not been changed.

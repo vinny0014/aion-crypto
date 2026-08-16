@@ -19,7 +19,7 @@ The production canonical domain is `https://aioncrypto.cloud` — applied to can
 ## Monorepo layout
 
 ```
-/frontend   Next.js 14 (App Router, TypeScript, Tailwind) — public site + admin shell
+/frontend   Next.js 15 (App Router, TypeScript, Tailwind) — public site + operations dashboard
 /backend    FastAPI (Python 3.12) — market data API, cache, cost guard, editorial pipeline foundation
 /docs       Architecture, deployment, policies, runbooks, handoff
 /scripts    Dev/ops helper scripts
@@ -40,7 +40,7 @@ uvicorn app.main:app --reload --port 8000
 Frontend:
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev   # http://localhost:3000
 ```
 
@@ -54,6 +54,9 @@ The frontend works even with the backend offline: every market block degrades to
 - `docs/COST_POLICY.md` — Cost Guard bands and rules (US$10/month API ceiling)
 - `docs/WORK_HANDOFF.md` — full handoff for the GPT Work review stage
 - `docs/VISUAL_AUDIT.md` — mockup fidelity tracking
+- `PRODUCTION_AUDIT.md` — evidence-backed production decision
+- `HOSTINGER_DEPLOY_PLAN.md` — preview-first Hostinger/Render/Supabase plan
+- `WORK_HANDOFF_FINAL.md` — final review handoff and human gates
 
 ## Non-goals / hard rules
 

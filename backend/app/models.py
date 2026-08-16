@@ -2,7 +2,7 @@
 users, watchlist, newsletter, cost ledger and task queue."""
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -22,6 +22,17 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class RefreshSession(Base):
+    """Server-side record for a rotating refresh token (the token itself is never stored)."""
+    __tablename__ = "refresh_sessions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Source(Base):
     __tablename__ = "sources"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -30,6 +41,9 @@ class Source(Base):
     kind: Mapped[str] = mapped_column(String(50), default="rss")  # rss|blog|regulatory|github|exchange
     trusted: Mapped[bool] = mapped_column(Boolean, default=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -38,16 +52,32 @@ class Article(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(300), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(300))
+    subtitle: Mapped[str] = mapped_column(String(500), default="")
     summary: Mapped[str] = mapped_column(Text, default="")
     body: Mapped[str] = mapped_column(Text, default="")
     category: Mapped[str] = mapped_column(String(100), default="news", index=True)
+    language: Mapped[str] = mapped_column(String(10), default="en")
+    related_asset: Mapped[str] = mapped_column(String(30), default="")
+    priority: Mapped[str] = mapped_column(String(20), default="normal", index=True)
     tags: Mapped[str] = mapped_column(String(500), default="")  # comma-separated
     image_url: Mapped[str] = mapped_column(String(600), default="")
     image_status: Mapped[str] = mapped_column(String(30), default="pending")  # pending|validated|failed
     source_url: Mapped[str] = mapped_column(String(600), default="")
     source_name: Mapped[str] = mapped_column(String(200), default="")
+    source_published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sources_json: Mapped[str] = mapped_column(Text, default="[]")
+    evidence_json: Mapped[str] = mapped_column(Text, default="[]")
+    is_fixture: Mapped[bool] = mapped_column(Boolean, default=False)
     content_hash: Mapped[str] = mapped_column(String(64), index=True, default="")
-    status: Mapped[str] = mapped_column(String(30), default="draft", index=True)  # draft|verified|published|rejected
+    status: Mapped[str] = mapped_column(String(30), default="detected", index=True)
+    confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
+    compliance_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    originality_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    seo_title: Mapped[str] = mapped_column(String(300), default="")
+    seo_description: Mapped[str] = mapped_column(String(320), default="")
+    canonical_url: Mapped[str] = mapped_column(String(600), default="")
+    author_name: Mapped[str] = mapped_column(String(120), default="AION Crypto")
+    rejection_reason: Mapped[str] = mapped_column(Text, default="")
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -57,15 +87,120 @@ class Task(Base):
     __tablename__ = "tasks"
     id: Mapped[int] = mapped_column(primary_key=True)
     kind: Mapped[str] = mapped_column(String(50), index=True)  # discovery|content|verify|image|publish|monitor
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), unique=True, index=True, nullable=True)
     payload: Mapped[str] = mapped_column(Text, default="{}")
     status: Mapped[str] = mapped_column(String(30), default="queued", index=True)  # queued|running|done|failed|dead
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)
     last_error: Mapped[str] = mapped_column(Text, default="")
     locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SchedulerRun(Base):
+    """Auditable scheduler lease and outcome; only one run may be active."""
+    __tablename__ = "scheduler_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_key: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="running", index=True)
+    trigger: Mapped[str] = mapped_column(String(20), default="scheduled")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sources_scanned: Mapped[int] = mapped_column(Integer, default=0)
+    items_seen: Mapped[int] = mapped_column(Integer, default=0)
+    articles_detected: Mapped[int] = mapped_column(Integer, default=0)
+    duplicates_rejected: Mapped[int] = mapped_column(Integer, default=0)
+    published: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+
+
+class ManusWebhookEvent(Base):
+    """Verified Manus event inbox. Events never execute tasks directly."""
+    __tablename__ = "manus_webhook_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    event_type: Mapped[str] = mapped_column(String(40), index=True)
+    task_id: Mapped[str] = mapped_column(String(200), index=True)
+    task_title: Mapped[str] = mapped_column(String(500), default="")
+    task_url: Mapped[str] = mapped_column(String(1000), default="")
+    stop_reason: Mapped[str] = mapped_column(String(40), default="")
+    message: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(30), default="received", index=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentCoordinationTask(Base):
+    """Leased handoff between Codex and Manus; no task may wait forever."""
+    __tablename__ = "agent_coordination_tasks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    idempotency_key: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    instructions: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default="queued", index=True)
+    current_actor: Mapped[str] = mapped_column(String(20), index=True)
+    lease_token_hash: Mapped[str] = mapped_column(String(64), default="")
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=6)
+    blocker_type: Mapped[str] = mapped_column(String(40), default="")
+    blocker_detail: Mapped[str] = mapped_column(Text, default="")
+    result_summary: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentCoordinationEvent(Base):
+    __tablename__ = "agent_coordination_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("agent_coordination_tasks.id"), index=True)
+    actor: Mapped[str] = mapped_column(String(20), default="system", index=True)
+    event_type: Mapped[str] = mapped_column(String(40), index=True)
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class MascotArenaRound(Base):
+    """A UTC weekly competition. Completed rounds are the Hall of Fame source."""
+    __tablename__ = "mascot_arena_rounds"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    week_key: Mapped[str] = mapped_column(String(16), unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    champion_symbol: Mapped[str] = mapped_column(String(20), default="", index=True)
+    top_three_json: Mapped[str] = mapped_column(Text, default="[]")
+    roster_json: Mapped[str] = mapped_column(Text, default="[]")
+    reserve_json: Mapped[str] = mapped_column(Text, default="[]")
+    next_roster_json: Mapped[str] = mapped_column(Text, default="[]")
+    next_reserve_json: Mapped[str] = mapped_column(Text, default="[]")
+    relegated_symbol: Mapped[str] = mapped_column(String(20), default="")
+    promoted_symbol: Mapped[str] = mapped_column(String(20), default="")
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MascotArenaVote(Base):
+    """Privacy-preserving anonymous vote; raw IP and device identifiers are never stored."""
+    __tablename__ = "mascot_arena_votes"
+    __table_args__ = (
+        UniqueConstraint("round_id", "voter_hash", "vote_day", name="uq_mascot_vote_round_voter_day"),
+        Index("ix_mascot_arena_votes_round_rank", "round_id", "mascot_symbol"),
+        Index("ix_mascot_arena_votes_ip_time", "ip_hash", "voted_at"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    round_id: Mapped[int] = mapped_column(ForeignKey("mascot_arena_rounds.id"), index=True)
+    mascot_symbol: Mapped[str] = mapped_column(String(20), index=True)
+    voter_hash: Mapped[str] = mapped_column(String(64), index=True)
+    ip_hash: Mapped[str] = mapped_column(String(64), index=True)
+    vote_day: Mapped[str] = mapped_column(String(10), index=True)
+    source: Mapped[str] = mapped_column(String(120), default="arena")
+    voted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
 class CostLedgerEntry(Base):
@@ -92,11 +227,18 @@ class Subscriber(Base):
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False)  # double opt-in
     unsubscribed: Mapped[bool] = mapped_column(Boolean, default=False)
     segment: Mapped[str] = mapped_column(String(100), default="weekly")
+    source: Mapped[str] = mapped_column(String(200), default="website")
+    confirmation_token_hash: Mapped[str] = mapped_column(String(64), default="")
+    unsubscribe_token_hash: Mapped[str] = mapped_column(String(64), default="")
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class WatchlistItem(Base):
     __tablename__ = "watchlist_items"
+    __table_args__ = (UniqueConstraint("user_id", "symbol", name="uq_watchlist_items_user_symbol"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
@@ -113,3 +255,62 @@ class Incident(Base):
     status: Mapped[str] = mapped_column(String(30), default="open", index=True)  # open|recovering|resolved
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SubscriberPreference(Base):
+    __tablename__ = "subscriber_preferences"
+    __table_args__ = (UniqueConstraint("subscriber_id", "category", name="uq_subscriber_preference"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subscriber_id: Mapped[int] = mapped_column(ForeignKey("subscribers.id"), index=True)
+    category: Mapped[str] = mapped_column(String(80), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EditorialEvent(Base):
+    __tablename__ = "editorial_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int | None] = mapped_column(ForeignKey("articles.id"), nullable=True, index=True)
+    agent: Mapped[str] = mapped_column(String(50), index=True)
+    from_state: Mapped[str] = mapped_column(String(30), default="")
+    to_state: Mapped[str] = mapped_column(String(30), index=True)
+    result: Mapped[str] = mapped_column(String(30), default="ok")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    evidence_json: Mapped[str] = mapped_column(Text, default="[]")
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class SocialOutbox(Base):
+    __tablename__ = "social_outbox"
+    __table_args__ = (UniqueConstraint("article_id", "channel", name="uq_social_outbox_article_channel"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
+    channel: Mapped[str] = mapped_column(String(30), index=True)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    utm_url: Mapped[str] = mapped_column(String(800), default="")
+    status: Mapped[str] = mapped_column(String(30), default="prepared", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class BreakingCampaign(Base):
+    __tablename__ = "breaking_campaigns"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provisional_title: Mapped[str] = mapped_column(String(300))
+    fact_summary: Mapped[str] = mapped_column(Text, default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    primary_source: Mapped[str] = mapped_column(String(800))
+    additional_sources_json: Mapped[str] = mapped_column(Text, default="[]")
+    related_asset: Mapped[str] = mapped_column(String(30), default="")
+    category: Mapped[str] = mapped_column(String(100), default="Market Analysis")
+    image_url: Mapped[str] = mapped_column(String(800), default="")
+    urgency: Mapped[str] = mapped_column(String(20), default="normal")
+    language: Mapped[str] = mapped_column(String(10), default="en")
+    publish_action: Mapped[str] = mapped_column(String(30), default="review")
+    prepare_social: Mapped[bool] = mapped_column(Boolean, default=True)
+    daily_candidate: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(30), default="draft", index=True)
+    article_id: Mapped[int | None] = mapped_column(ForeignKey("articles.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

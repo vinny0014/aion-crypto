@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { Provenance } from "@/lib/api";
-import { fmtPct, timeAgo } from "@/lib/format";
+import type { Provenance } from "../lib/api";
+import { fmtPct, timeAgo } from "../lib/format";
 
 export function Delta({ value, className = "" }: { value: number | null | undefined; className?: string }) {
   if (value == null) return <span className={`text-ink-dim ${className}`}>—</span>;
@@ -38,8 +38,8 @@ export function SourceTag({ p }: { p: Provenance }) {
   const label =
     p.status === "live" ? `${p.source} · ${timeAgo(p.fetched_at)}` :
     p.status === "stale" ? `${p.source} · stale` :
-    p.status === "sample" ? "sample data · backend offline" :
-    "data temporarily unavailable";
+    p.status === "sample" ? "Sample data · backend offline" :
+    "Live API connected · market data temporarily unavailable";
   const tone =
     p.status === "live" ? "text-accent-green" :
     p.status === "stale" ? "text-accent-btc" :

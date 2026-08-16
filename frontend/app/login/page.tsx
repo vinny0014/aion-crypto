@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+import { track } from "../../components/Analytics";
+import { BACKEND, clearSession, saveTokens, verifySession } from "../../lib/auth";
 
 export default function LoginPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "ok">("idle");
@@ -12,6 +12,11 @@ export default function LoginPage() {
     e.preventDefault();
     setStatus("loading");
     const form = new FormData(e.currentTarget);
+    if (!BACKEND) {
+      setStatus("error");
+      setMessage("Sign-in is not connected in this preview environment.");
+      return;
+    }
     try {
       const res = await fetch(`${BACKEND}/api/v1/auth/login`, {
         method: "POST",
@@ -24,9 +29,17 @@ export default function LoginPage() {
         return;
       }
       const tokens = await res.json();
-      sessionStorage.setItem("aion-access-token", tokens.access_token);
+      saveTokens(tokens);
+      const user = await verifySession();
+      if (!user) {
+        clearSession();
+        setStatus("error");
+        setMessage("Sign-in could not be verified. Please try again.");
+        return;
+      }
+      track("login");
       setStatus("ok");
-      setMessage("Signed in. Admin area access is enabled for this session.");
+      setMessage(user.role === "admin" || user.role === "editor" ? "Signed in. Your account access was verified." : "Signed in. Your account was verified.");
     } catch {
       setStatus("error");
       setMessage("Could not reach the API. Check that the backend is running.");

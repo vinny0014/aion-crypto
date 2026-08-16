@@ -1,19 +1,24 @@
-import { FIXTURE_ARTICLES } from "@/lib/fixtures";
-import { SITE_URL } from "@/lib/site";
+import { MASCOTS } from "../../lib/mascots";
+import { SITE_URL } from "../../lib/site";
 
 export const dynamic = "force-static";
 
+function escapeXml(value: string) {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
 export function GET() {
-  // Articles ship without fabricated stock photos; each entry lists the page and
-  // any real image attached to it (none yet — pipeline attaches licensed images later).
-  const items = FIXTURE_ARTICLES.map(
-    (a) => `  <url>
-    <loc>${SITE_URL}/news/${a.slug}</loc>
-  </url>`
-  ).join("\n");
+  const images = MASCOTS.filter((mascot) => mascot.image).map((mascot) => `
+    <image:image>
+      <image:loc>${SITE_URL}${mascot.image}</image:loc>
+      <image:title>${escapeXml(`${mascot.coin} — ${mascot.title}`)}</image:title>
+      <image:caption>${escapeXml(mascot.lore)}</image:caption>
+    </image:image>`).join("");
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${items}
+  <url>
+    <loc>${SITE_URL}/mascot-arena</loc>${images}
+  </url>
 </urlset>`;
   return new Response(xml, { headers: { "Content-Type": "application/xml; charset=utf-8" } });
 }

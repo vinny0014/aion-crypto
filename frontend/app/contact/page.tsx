@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "For corrections, tips or press inquiries, write to editorial@aioncrypto.cloud. We aim to respond within two business days.",
+  description: "Contact AION Crypto for corrections, privacy, security and partnership inquiries.",
   alternates: { canonical: "/contact" },
 };
 
@@ -12,7 +12,7 @@ export default function Page() {
       <h1 className="font-display text-2xl font-bold">Contact</h1>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">Editorial</h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">For corrections, tips or press inquiries, write to editorial@aioncrypto.cloud. We aim to respond within two business days.</p>
+        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">For corrections, tips or press inquiries, write to editorial@aioncrypto.cloud.</p>
       </section>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">Partnerships</h2>

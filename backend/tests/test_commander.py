@@ -32,11 +32,14 @@ def test_retry_then_dead_letter(session):
     c = Commander(session)
     def boom(_): raise RuntimeError("network down")
     c.register("content", boom)
-    c.enqueue("content", max_attempts=3)
+    task = c.enqueue("content", max_attempts=3)
     assert c.run_cycle()["failed"] == 1     # attempt 1 -> requeued
+    task.available_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    session.commit()
     assert c.run_cycle()["failed"] == 1     # attempt 2 -> requeued
+    task.available_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    session.commit()
     assert c.run_cycle()["dead"] == 1       # attempt 3 -> dead-letter
-    task = session.execute(select(Task)).scalar_one()
     assert task.status == "dead" and "network down" in task.last_error
 
 
@@ -84,3 +87,27 @@ def test_regression_failed_task_not_retried_in_same_cycle(session):
     c.enqueue("verify", max_attempts=5)
     c.run_cycle()
     assert calls["n"] == 1  # exactly one attempt per cycle
+
+
+def test_enqueue_is_idempotent(session):
+    commander = Commander(session)
+    first = commander.enqueue("demo", {"value": 1}, idempotency_key="same-event")
+    second = commander.enqueue("demo", {"value": 2}, idempotency_key="same-event")
+    assert first.id == second.id
+
+
+def test_retry_honors_backoff_window(session):
+    commander = Commander(session)
+
+    def fail(_):
+        raise RuntimeError("boom")
+
+    commander.register("fail", fail)
+    task = commander.enqueue("fail", max_attempts=3)
+    commander.run_cycle()
+    session.refresh(task)
+    assert task.status == "queued"
+    attempts = task.attempts
+    commander.run_cycle()
+    session.refresh(task)
+    assert task.attempts == attempts

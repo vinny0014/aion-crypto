@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "We collect the minimum needed to operate the site: server logs for security and reliability, newsletter email addresses you explicitly provide, and — ",
+  description: "How AION Crypto handles server logs, newsletter details, aggregate analytics and privacy rights while minimizing collected data.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -16,7 +16,7 @@ export default function Page() {
       </section>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">Newsletter</h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Subscribing requires explicit consent and is confirmed via double opt-in. Every email includes a one-click unsubscribe link, and unsubscribing removes you from all sends.</p>
+        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Subscribing requires explicit consent. Confirmation and unsubscribe tokens are stored only as hashes. Email delivery remains disabled until a safe channel is connected; when sending is enabled, confirmation must occur before any alert and every message must include an unsubscribe link.</p>
       </section>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">Cookies and analytics</h2>

@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db import init_db
-from app.routers import auth, cost, health, market
+from app.middleware import RateLimitMiddleware
+from app.routers import admin, arena, auth, cost, editorial, health, manus, market, scheduler, watchlist
 from app.services.market import get_market_service
 
 
@@ -20,8 +21,14 @@ settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
+    RateLimitMiddleware,
+    public_limit=settings.rate_limit_public_per_minute,
+    auth_limit=settings.rate_limit_auth_per_minute,
+)
+
+app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=settings.allowed_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
@@ -39,5 +46,11 @@ async def security_headers(request, call_next):
 
 app.include_router(health.router)
 app.include_router(market.router)
+app.include_router(arena.router)
 app.include_router(auth.router)
+app.include_router(watchlist.router)
 app.include_router(cost.router)
+app.include_router(admin.router)
+app.include_router(editorial.router)
+app.include_router(scheduler.router)
+app.include_router(manus.router)

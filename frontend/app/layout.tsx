@@ -1,44 +1,69 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import { APP_NAME, TAGLINE, SITE_URL } from "@/lib/site";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+import Analytics from "../components/Analytics";
+import AdSenseBootstrap from "../components/AdSenseBootstrap";
+import {
+  APP_NAME,
+  INDEXING_ENABLED,
+  SITE_ALTERNATE_NAME,
+  SITE_DESCRIPTION,
+  SITE_LOGO_URL,
+  SITE_TITLE,
+  TAGLINE,
+  SITE_URL,
+} from "../lib/site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: `${APP_NAME} — ${TAGLINE}`, template: `%s · ${APP_NAME}` },
-  description:
-    "Real-time crypto market data, charts, news and analysis. AION Crypto is a crypto market intelligence portal — prices, insights and research in one place.",
+  title: { default: SITE_TITLE, template: `%s · ${APP_NAME}` },
+  description: SITE_DESCRIPTION,
+  applicationName: APP_NAME,
+  creator: APP_NAME,
+  publisher: APP_NAME,
+  category: "technology",
   alternates: { canonical: "/" },
   openGraph: {
     siteName: APP_NAME,
     type: "website",
-    url: SITE_URL,
+    url: `${SITE_URL}/`,
     locale: "en_US",
-    title: `${APP_NAME} — ${TAGLINE}`,
-    description: "Real-time crypto market data, charts, news and analysis.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   twitter: {
-    card: "summary_large_image",
-    title: `${APP_NAME} — ${TAGLINE}`,
-    description: "Real-time crypto market data, charts, news and analysis.",
+    card: "summary",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
-  robots: { index: true, follow: true },
+  robots: {
+    index: INDEXING_ENABLED,
+    follow: INDEXING_ENABLED,
+    googleBot: { index: INDEXING_ENABLED, follow: INDEXING_ENABLED },
+  },
 };
 
 const orgJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: APP_NAME,
-  url: SITE_URL,
+  url: `${SITE_URL}/`,
   slogan: TAGLINE,
+  logo: {
+    "@type": "ImageObject",
+    url: SITE_LOGO_URL,
+    width: 512,
+    height: 512,
+  },
 };
 
 const siteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: APP_NAME,
-  url: SITE_URL,
+  alternateName: SITE_ALTERNATE_NAME,
+  url: `${SITE_URL}/`,
   potentialAction: {
     "@type": "SearchAction",
     target: `${SITE_URL}/search?q={search_term_string}`,
@@ -52,6 +77,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen font-sans">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
+        <Analytics />
+        <AdSenseBootstrap />
         <Header />
         <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-5">{children}</main>
         <Footer />
