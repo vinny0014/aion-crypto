@@ -61,7 +61,11 @@ test("Arena loads 15 verified stories through one aggregate request", async ({ p
 
   const cards = page.locator("#contenders article");
   await expect(cards).toHaveCount(15);
-  await expect(cards.locator('a[href^="/news/latest-"]')).toHaveCount(15);
+  await expect(cards.locator('a[href^="/news/latest-"]').first()).toBeVisible();
+  const storyLinksPerCard = await cards.evaluateAll((nodes) => nodes.map(
+    (node) => node.querySelectorAll('a[href^="/news/latest-"]').length,
+  ));
+  expect(storyLinksPerCard.every((count) => count >= 1)).toBe(true);
   await expect(page.locator('[data-analytics-view-event="mascot_relegation_view"]')).toHaveCount(1);
   await expect(page.locator('[data-analytics-event="mascot_challenger_click"]')).toHaveCount(1);
   expect(arenaRequests).toHaveLength(1);
