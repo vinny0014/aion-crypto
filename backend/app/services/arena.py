@@ -9,12 +9,15 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.cache import TTLCache
 from app.config import get_settings
 from app.models import Article, MascotArenaRound, MascotArenaVote
 
 
 ACTIVE_MASCOT_COUNT = 15
 HISTORICAL_ROSTER_COUNTS = frozenset((10, ACTIVE_MASCOT_COUNT))
+MASCOT_NEWS_CACHE_SECONDS = 4 * 60 * 60
+_MASCOT_NEWS_CACHE = TTLCache()
 
 MASCOTS: tuple[dict[str, str], ...] = (
     {"symbol": "BTC", "coin": "Bitcoin", "title": "The Viking King"},
@@ -209,6 +212,12 @@ def _previous_positions(db: Session, current_id: int) -> dict[str, int]:
 
 
 def _latest_news(db: Session, symbols: list[str]) -> dict[str, dict]:
+    bind = db.get_bind()
+    database_id = str(bind.url.render_as_string(hide_password=True)) if bind is not None else "default"
+    cache_key = f"mascot-news:{database_id}:{','.join(sorted(symbols))}"
+    cached = _MASCOT_NEWS_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     articles = db.execute(
         select(Article).where(
             Article.related_asset.in_(symbols),
@@ -223,6 +232,10 @@ def _latest_news(db: Session, symbols: list[str]) -> dict[str, dict]:
                 "slug": article.slug, "title": article.title,
                 "published_at": _aware(article.published_at),
             }
+    # Do not cache an empty map so the first newly published verified story is
+    # immediately discoverable. Populated associations refresh every four hours.
+    if result:
+        _MASCOT_NEWS_CACHE.set(cache_key, result, MASCOT_NEWS_CACHE_SECONDS)
     return result
 
 

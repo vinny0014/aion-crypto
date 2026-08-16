@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db import Base
 from app.models import Article
-from app.services.arena import _latest_news
+from app.services.arena import MASCOT_NEWS_CACHE_SECONDS, _latest_news
 
 
 ACTIVE_SYMBOLS = [
@@ -61,3 +61,9 @@ def test_latest_story_for_all_15_mascots_is_resolved_in_one_query(session):
     assert set(result) == set(ACTIVE_SYMBOLS)
     assert all(result[symbol]["slug"] == f"{symbol.lower()}-fresh" for symbol in ACTIVE_SYMBOLS)
     assert len(statements) == 1, "mascot stories must use one aggregate DB query, never per-card N+1 queries"
+    assert MASCOT_NEWS_CACHE_SECONDS == 4 * 60 * 60
+
+    statements.clear()
+    cached = _latest_news(session, ACTIVE_SYMBOLS)
+    assert cached == result
+    assert statements == [], "the populated mascot-story map must be reused for four hours"
