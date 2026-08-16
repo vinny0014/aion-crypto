@@ -91,16 +91,18 @@ class EditorialPipeline:
         if not urls or any(not valid_public_url(url) for url in urls):
             raise ValueError("at least one valid public HTTPS source is required")
         fingerprint = hashlib.sha256((title.lower() + "|" + urls[0]).encode()).hexdigest()
+        canonical_slug = slugify(title)
         duplicate = self.db.execute(select(Article).where(
             (Article.content_hash == fingerprint) |
             (Article.source_url == urls[0]) |
-            (func.lower(Article.title) == title.lower())
+            (func.lower(Article.title) == title.lower()) |
+            (Article.slug == canonical_slug)
         )).scalar_one_or_none()
         if duplicate:
             if reject_duplicate:
                 raise DuplicateArticleError(duplicate.id)
             return duplicate
-        base_slug = slugify(title)
+        base_slug = canonical_slug
         slug = base_slug
         suffix = 1
         while self.db.execute(select(Article.id).where(Article.slug == slug)).scalar_one_or_none():

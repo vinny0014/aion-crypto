@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "We collect the minimum needed to operate the site: server logs for security and reliability, newsletter email addresses you explicitly provide, and — ",
+  description: "How AION Crypto handles server logs, newsletter details, aggregate analytics and privacy rights while minimizing collected data.",
   alternates: { canonical: "/privacy" },
 };
 

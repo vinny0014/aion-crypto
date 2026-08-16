@@ -47,6 +47,10 @@ COIN_REGISTRY: dict[str, dict[str, str]] = {
     "INJ": {"name": "Injective", "gecko_id": "injective-protocol", "category": "DeFi"},
     "LTC": {"name": "Litecoin", "gecko_id": "litecoin", "category": "Currency"},
     "UNI": {"name": "Uniswap", "gecko_id": "uniswap", "category": "DeFi"},
+    "SHIB": {"name": "Shiba Inu", "gecko_id": "shiba-inu", "category": "Meme"},
+    "PEPE": {"name": "Pepe", "gecko_id": "pepe", "category": "Meme"},
+    "HYPE": {"name": "Hyperliquid", "gecko_id": "hyperliquid", "category": "DeFi"},
+    "TRX": {"name": "TRON", "gecko_id": "tron", "category": "Smart Contracts"},
 }
 
 logger = logging.getLogger(__name__)

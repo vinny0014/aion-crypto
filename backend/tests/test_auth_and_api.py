@@ -79,8 +79,12 @@ def test_login_flow_and_role_protection(client):
 def test_registry_endpoint(client):
     r = client.get("/api/v1/market/registry")
     assert r.status_code == 200
-    symbols = [c["symbol"] for c in r.json()["data"]]
-    assert "BTC" in symbols and "ETH" in symbols
+    registry = {coin["symbol"]: coin for coin in r.json()["data"]}
+    assert len(registry) >= 24
+    assert registry["SHIB"]["gecko_id"] == "shiba-inu"
+    assert registry["PEPE"]["gecko_id"] == "pepe"
+    assert registry["HYPE"]["gecko_id"] == "hyperliquid"
+    assert registry["TRX"]["gecko_id"] == "tron"
 
 
 def test_audience_consent_honeypot_and_confirmation(client):

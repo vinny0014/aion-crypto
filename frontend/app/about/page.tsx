@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "About AION Crypto",
-  description: "AION Crypto is a crypto market intelligence portal. We combine real-time market data from public exchange APIs with news, analysis and educational gui",
+  description: "AION Crypto combines real-time public market data with sourced crypto news, analysis and educational guides.",
   alternates: { canonical: "/about" },
 };
 

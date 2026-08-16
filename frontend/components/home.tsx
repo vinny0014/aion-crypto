@@ -1,15 +1,17 @@
 import Link from "next/link";
-import type { GlobalMetrics, Kline, PublishedArticle, TickerCoin, Wrapped } from "../lib/api";
+import Image from "next/image";
+import type { GlobalMetrics, Kline, MascotArenaState, PublishedArticle, TickerCoin, Wrapped } from "../lib/api";
 import { fmtNum, fmtPct, fmtUsd } from "../lib/format";
 import { AreaChart, Donut, FearGreedGauge, Sparkline } from "./charts";
 import { CoinDot, Delta, SectionTitle, SourceTag, Unavailable } from "./ui";
+import { mascotFor } from "../lib/mascots";
 
 // ── 1. Coin ticker strip ─────────────────────────────────────────
 export function TickerBar({ ticker }: { ticker: Wrapped<TickerCoin[]> }) {
   if (!ticker.data) return null;
   return (
     <div className="border-b border-line bg-bg-soft/60">
-      <div className="mx-auto flex max-w-[1400px] items-center gap-5 overflow-x-auto px-3 py-2 sm:px-5 scroll-thin">
+      <div className="mx-auto flex max-w-[1400px] items-center gap-5 overflow-x-auto px-3 py-2 sm:px-5 scroll-thin" role="region" aria-label="Live cryptocurrency ticker" tabIndex={0}>
         {ticker.data.map((c) => (
           <Link key={c.symbol} href={`/crypto/${c.symbol}`} className="flex shrink-0 items-center gap-2 text-[12.5px]">
             <CoinDot symbol={c.symbol} />
@@ -38,7 +40,7 @@ export function GlobalMetricsBar({ g }: { g: Wrapped<GlobalMetrics> }) {
     : [];
   return (
     <div className="border-b border-line">
-      <div className="mx-auto flex max-w-[1400px] items-stretch gap-6 overflow-x-auto px-3 py-3 sm:px-5 scroll-thin">
+      <div className="mx-auto flex max-w-[1400px] items-stretch gap-6 overflow-x-auto px-3 py-3 sm:px-5 scroll-thin" role="region" aria-label="Global cryptocurrency market metrics" tabIndex={0}>
         {d ? (
           items.map(([label, value, delta]) => (
             <div key={label} className="shrink-0">
@@ -325,6 +327,30 @@ export function NewsletterBand() {
         <p className="text-[13px] text-ink-dim">Weekly crypto market intelligence in your inbox. No spam, unsubscribe anytime.</p>
       </div>
       <Link href="/newsletter" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-glow">Choose alerts</Link>
+    </section>
+  );
+}
+
+export function MascotArenaPreview({ arena }: { arena: MascotArenaState | null }) {
+  const champion = arena?.mascot_of_week ?? arena?.champion;
+  const mascot = mascotFor(champion?.symbol ?? "BTC")!;
+  const isWeeklyChampion = Boolean(arena?.mascot_of_week);
+  const top = arena?.ranking.slice(0, 3) ?? [];
+  return (
+    <section className="card mt-5 overflow-hidden border-amber-400/25">
+      <div className="grid items-center md:grid-cols-[220px_1fr]">
+        <div className="relative h-56 md:h-full md:min-h-[250px]">
+          {mascot.image ? <Image src={mascot.image} alt={`${mascot.title}, AION Crypto Mascot Arena champion`} fill sizes="(max-width: 768px) 100vw, 220px" className="object-cover object-top" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/35 via-card to-amber-400/15"><span className="font-display text-6xl font-black text-white">{champion?.symbol}</span></div>}
+          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent md:bg-gradient-to-r md:from-transparent md:to-card" />
+        </div>
+        <div className="p-5 sm:p-7">
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-amber-300">{isWeeklyChampion ? "Mascot of the Week" : "Mascot Arena · Battle for the Crown"}</p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-white">{mascot.title} {isWeeklyChampion ? "wears the crown" : "is leading the Arena"}</h2>
+          <p className="mt-2 text-sm text-ink-dim">{isWeeklyChampion ? `${mascot.coin} finished #1 with ${champion?.votes.toLocaleString() ?? 0} votes.` : "Choose one of fifteen original crypto characters and shape this week's ranking."}</p>
+          {top.length > 0 && <ol className="mt-4 flex flex-wrap gap-2">{top.map((item) => <li key={item.symbol} className="chip">#{item.position} {item.symbol} · {item.votes.toLocaleString()}</li>)}</ol>}
+          <div className="mt-5 flex flex-wrap gap-3"><Link href="/mascot-arena#contenders" data-analytics-event="mascot_champion_click" className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-glow">Vote Now</Link><Link href="/mascot-arena#ranking" data-analytics-event="mascot_champion_click" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">View Arena</Link>{champion?.latest_news ? <Link href={`/news/${champion.latest_news.slug}`} data-analytics-event="mascot_champion_click" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">Latest News</Link> : <span className="text-xs text-ink-dim">Latest verified coverage coming soon.</span>}</div>
+        </div>
+      </div>
     </section>
   );
 }

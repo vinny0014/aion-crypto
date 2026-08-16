@@ -6,6 +6,7 @@ const pageRoutes = [
   "/",
   "/markets",
   "/crypto/BTC",
+  "/mascot-arena",
   "/news",
   "/search?q=bitcoin",
   "/sources-methodology",
@@ -85,6 +86,19 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
   expect(newsSitemap).not.toContain("<news:news>");
   const homeHtml = await (await request.get("/")).text();
   expect(homeHtml).not.toContain("bitcoin-etf-flows-institutional-demand");
+
+  await page.goto("/mascot-arena", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { level: 1, name: "Battle for the Crown" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Weekly Top 15" })).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(15);
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /bitcoin-viking-king-v2\.webp/);
+  const arenaAccessibility = await new AxeBuilder({ page }).analyze();
+  expect(arenaAccessibility.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical")).toEqual([]);
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/mascot-arena", { waitUntil: "domcontentloaded" });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+
+  await page.goto("/");
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   const blockers = accessibility.violations

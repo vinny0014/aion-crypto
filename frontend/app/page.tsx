@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { getGlobal, getKlines, getMarketsTable, getPublishedArticles, getTicker } from "../lib/api";
+import { getGlobal, getKlines, getMarketsTable, getMascotArena, getPublishedArticles, getTicker } from "../lib/api";
 import {
-  ArticlesGrid, GlobalMetricsBar, HeroRow, MarketRow, MoversRow, NewsletterBand, SnapshotsRow, TickerBar,
+  ArticlesGrid, GlobalMetricsBar, HeroRow, MarketRow, MascotArenaPreview, MoversRow, NewsletterBand, SnapshotsRow, TickerBar,
 } from "../components/home";
 import { APP_NAME, SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";
 
@@ -27,12 +27,13 @@ const homeJsonLd = {
 };
 
 export default async function Home() {
-  const [ticker, table, global_, btcKlines, articles] = await Promise.all([
+  const [ticker, table, global_, btcKlines, articles, arena] = await Promise.all([
     getTicker(),
     getMarketsTable(),
     getGlobal(),
     getKlines("BTC", "1h", 168),
     getPublishedArticles(),
+    getMascotArena(),
   ]);
 
   return (
@@ -50,6 +51,7 @@ export default async function Home() {
       <MarketRow btcKlines={btcKlines} table={table} g={global_} />
       <MoversRow table={table} />
       <SnapshotsRow ticker={ticker} />
+      <MascotArenaPreview arena={arena} />
       <ArticlesGrid articles={articles} />
       <NewsletterBand />
     </>

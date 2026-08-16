@@ -12,6 +12,7 @@ from app.models import Article, SchedulerRun, Source
 from app.pipeline.commander import LOCK_TIMEOUT_MINUTES
 from app.pipeline.editorial import utcnow
 from app.pipeline.registry import build_commander
+from app.services.arena import ensure_current_round
 
 
 def scheduler_status(db: Session) -> dict:
@@ -25,6 +26,12 @@ def scheduler_status(db: Session) -> dict:
         "last_result": last.status if last else None,
         "next_run": ((last.started_at if last else utcnow()) + timedelta(minutes=settings.scheduler_interval_minutes)) if settings.scheduler_enabled else None,
         "last_error": last.last_error if last and last.status == "failed" else "",
+        "sources_scanned": last.sources_scanned if last else 0,
+        "items_seen": last.items_seen if last else 0,
+        "articles_detected": last.articles_detected if last else 0,
+        "duplicates_rejected": last.duplicates_rejected if last else 0,
+        "published": last.published if last else 0,
+        "trigger": last.trigger if last else None,
     }
 
 
@@ -46,11 +53,22 @@ def run_editorial_schedule(db: Session, *, trigger: str = "scheduled") -> dict:
         run.status = "skipped"; run.finished_at = utcnow(); run.last_error = "another scheduler run holds the lease"; db.commit()
         return {"status": "locked", "run_id": run.id}
     try:
+        # The Arena lifecycle shares the existing zero-cost scheduler. Reads
+        # also run this guard, so a delayed scheduler never blocks voting.
+        ensure_current_round(db, now)
         sources = db.execute(select(Source).where(Source.active.is_(True)).order_by(Source.id).limit(settings.scheduler_max_sources_per_run)).scalars().all()
         commander = build_commander(db)
         before = db.execute(select(func.count(Article.id))).scalar_one()
+        commander.enqueue(
+            "market-brief", {},
+            idempotency_key=f"market-brief:{now.strftime('%Y%m%d')}",
+        )
         for source in sources:
-            commander.enqueue("source-scan", {"source_id": source.id}, idempotency_key=f"source:{source.id}:{now.strftime('%Y%m%d%H')}")
+            commander.enqueue(
+                "source-scan",
+                {"source_id": source.id, "scheduler_run_id": run.id},
+                idempotency_key=f"source:{source.id}:{now.strftime('%Y%m%d%H')}",
+            )
         stats = {"done": 0, "failed": 0, "dead": 0}
         for _ in range(8):
             cycle = commander.run_cycle()
@@ -60,8 +78,8 @@ def run_editorial_schedule(db: Session, *, trigger: str = "scheduled") -> dict:
                 break
         after = db.execute(select(func.count(Article.id))).scalar_one()
         run.sources_scanned = len(sources)
-        run.articles_detected = max(0, after - before)
-        run.items_seen = run.articles_detected
+        db.refresh(run)
+        run.articles_detected = max(run.articles_detected, max(0, after - before))
         run.published = db.execute(select(func.count(Article.id)).where(Article.published_at >= run.started_at)).scalar_one()
         run.status = "success" if not stats["failed"] and not stats["dead"] else "partial"
         run.finished_at = utcnow(); db.commit()

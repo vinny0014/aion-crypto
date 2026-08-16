@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Glossary",
-  description: "Airdrop: free token distribution to wallets. AMM: automated market maker, a pricing algorithm used by DEXes. Block: a batch of transactions added to a",
+  description: "Plain-English definitions of essential cryptocurrency, blockchain, market structure and decentralized-finance terms.",
   alternates: { canonical: "/glossary" },
 };
 
