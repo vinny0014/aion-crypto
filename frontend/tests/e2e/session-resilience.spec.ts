@@ -71,4 +71,6 @@ test("a rejected session still ends it and clears both tokens", async ({ page })
   await page.goto("/admin");
   await expect(page.getByText(/Your session expired/)).toBeVisible();
   expect(await storedTokens(page)).toEqual([null, null]);
+  await page.reload();
+  await expect(page.getByText(/Your session expired/)).toBeVisible();
 });
