@@ -21,7 +21,7 @@ jobs:
   send:
     runs-on: ubuntu-latest
     steps:
-      - name: Send protected command
+      - name: Queue durable Manus mission
         env:
           MANUS_COMMAND: ${{ inputs.command }}
           PRODUCTION_SHA: ${{ github.sha }}
@@ -29,16 +29,29 @@ jobs:
         run: |
           test -n "$SCHEDULER_TOKEN"
           if [ -z "$MANUS_COMMAND" ]; then
-            MANUS_COMMAND="TASK_ID=AION-PRODUCTION-DEPLOY; validate aioncrypto.cloud after production SHA=$PRODUCTION_SHA; verify HTTP, desktop/mobile, console, network, CLS, favicon/manifest and GA4 internal traffic; return evidence to GitHub issue #35."
+            MANUS_COMMAND="TASK_ID=AION-PRODUCTION-DEPLOY; validate aioncrypto.cloud after production SHA=$PRODUCTION_SHA; use ?aion_internal=1 only for the validation session; verify HTTP, desktop/mobile 360/390/412, console, network, CLS < 0.1, favicon/manifest, GA4 internal traffic, Arena live vote and ranking; return concise evidence to GitHub issue #35; complete or hand off through the coordination callback supplied by AION."
+            IDEMPOTENCY_KEY="production:$PRODUCTION_SHA"
+            TASK_TITLE="Validate AION production $PRODUCTION_SHA"
+          else
+            IDEMPOTENCY_KEY="manual:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}"
+            TASK_TITLE="AION manual Manus mission"
           fi
-          payload="$(jq -n --arg command "$MANUS_COMMAND" '{command: $command}')"
+          payload="$(jq -n \
+            --arg key "$IDEMPOTENCY_KEY" \
+            --arg title "$TASK_TITLE" \
+            --arg instructions "$MANUS_COMMAND" \
+            '{idempotency_key:$key,title:$title,instructions:$instructions,actor:"manus",max_attempts:6}')"
           curl --fail-with-body --silent --show-error \
             --max-time 35 \
             -H "Content-Type: application/json" \
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
             --data "$payload" \
-            https://aion-crypto-api.onrender.com/internal/manus/send
-      - name: Recover stale work and dispatch the queued Manus task
+            --output /tmp/manus-create.json \
+            https://aion-crypto-api.onrender.com/internal/manus/coordination/tasks
+          jq -e '.status == "created" or .status == "duplicate"' /tmp/manus-create.json >/dev/null
+          echo "AION Manus mission queued: $IDEMPOTENCY_KEY"
+
+      - name: Dispatch queued Manus mission now
         env:
           SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
         run: |
@@ -47,4 +60,8 @@ jobs:
             --max-time 40 \
             -X POST \
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --output /tmp/manus-dispatch.json \
             https://aion-crypto-api.onrender.com/internal/manus/coordination/tick
+          status="$(jq -r '.status // "unknown"' /tmp/manus-dispatch.json)"
+          test "$status" = "dispatched" -o "$status" = "idle"
+          echo "AION Manus dispatch: $status"
