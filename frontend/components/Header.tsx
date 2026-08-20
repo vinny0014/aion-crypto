@@ -70,17 +70,19 @@ export default function Header() {
         <nav className="ml-auto flex items-center gap-2 text-sm">
           <Link href="/watchlist" className="chip hover:text-ink">☆ Watchlist</Link>
           <Link href="/newsletter" className="chip hidden hover:text-ink sm:inline-flex">✉ Newsletter</Link>
-          {session.status === "authenticated" ? <>
-            {(session.user.role === "admin" || session.user.role === "editor") && <Link href="/admin" className="chip hover:text-ink">Admin</Link>}
-            <button onClick={() => void onLogout()} className="rounded-lg border border-line px-3 py-1.5 font-medium text-ink hover:border-primary" aria-label="Sign out">Sign out</button>
-          </> : hasTokens && (checking || session.status === "backend_unreachable") ? (
-            // tokens are intact and the backend simply has not answered yet:
-            // showing "Sign in" here would look like an involuntary logout
-            <span className="chip text-accent-btc" role="status" aria-live="polite">Reconnecting…</span>
-          ) : <Link href="/login" className="rounded-lg bg-primary px-3 py-1.5 font-medium text-white shadow-glow hover:bg-primary-glow">Sign in</Link>}
+          <span className="flex min-h-8 min-w-[7.25rem] items-center justify-end">
+            {session.status === "authenticated" ? <span className="flex items-center gap-2">
+              {(session.user.role === "admin" || session.user.role === "editor") && <Link href="/admin" className="chip hover:text-ink">Admin</Link>}
+              <button onClick={() => void onLogout()} className="rounded-lg border border-line px-3 py-1.5 font-medium text-ink hover:border-primary" aria-label="Sign out">Sign out</button>
+            </span> : hasTokens && (checking || session.status === "backend_unreachable") ? (
+              // tokens are intact and the backend simply has not answered yet:
+              // showing "Sign in" here would look like an involuntary logout
+              <span className="chip text-accent-btc" role="status" aria-live="polite">Reconnecting…</span>
+            ) : <Link href="/login" className="rounded-lg bg-primary px-3 py-1.5 font-medium text-white shadow-glow hover:bg-primary-glow">Sign in</Link>}
+          </span>
         </nav>
       </div>
-      <nav className="mx-auto flex max-w-[1400px] items-center gap-1 overflow-x-auto px-3 pb-2 sm:px-5 scroll-thin" aria-label="Sections">
+      <nav className="mx-auto flex h-9 max-w-[1400px] items-center gap-1 overflow-x-auto overflow-y-hidden px-3 pb-2 sm:px-5 scroll-thin" aria-label="Sections">
         {NAV.map(([label, href]) => (
           <Link
             key={href}

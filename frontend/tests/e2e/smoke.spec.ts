@@ -18,6 +18,9 @@ const pageRoutes = [
 
 const documentRoutes = [
   "/health",
+  "/favicon.ico",
+  "/icon.svg",
+  "/manifest.webmanifest",
   "/robots.txt",
   "/sitemap.xml",
   "/news-sitemap.xml",
@@ -27,6 +30,10 @@ const documentRoutes = [
 
 test("production routes, SEO identity and responsive layouts", async ({ page, request }) => {
   const errors: string[] = [];
+  await page.route("https://www.googletagmanager.com/**", (route) => route.fulfill({
+    contentType: "application/javascript",
+    body: "// analytics network isolated in E2E",
+  }));
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
@@ -51,6 +58,7 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
 
   const homeResponse = await page.goto("/");
   expect(homeResponse?.headers()["content-security-policy"]).toContain("default-src 'self'");
+  expect(homeResponse?.headers()["content-security-policy"]).toContain("https://www.googletagmanager.com");
   await expect(page).toHaveTitle("AION Crypto — Live Crypto Prices, News and Market Analysis");
   await expect(page.locator('html[lang="en"]')).toHaveCount(1);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://aioncrypto.cloud");
@@ -82,6 +90,12 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
   const sitemap = await (await request.get("/sitemap.xml")).text();
   expect(sitemap).toContain("<loc>https://aioncrypto.cloud</loc>");
   expect((await request.get("/aion-crypto-logo.svg")).status()).toBe(200);
+  expect((await request.get("/favicon.ico")).headers()["content-type"]).toContain("image/svg+xml");
+  expect((await request.get("/icon.svg")).headers()["content-type"]).toContain("image/svg+xml");
+  const webManifest = await (await request.get("/manifest.webmanifest")).json();
+  expect(webManifest).toMatchObject({ name: "AION Crypto", start_url: "/", theme_color: "#6d28d9" });
+  await expect(page.locator('link[rel="icon"][href="/favicon.ico"]')).toHaveCount(1);
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest.webmanifest");
   const newsSitemap = await (await request.get("/news-sitemap.xml")).text();
   expect(newsSitemap).not.toContain("<news:news>");
   const homeHtml = await (await request.get("/")).text();

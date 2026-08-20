@@ -42,6 +42,15 @@ export const metadata: Metadata = {
     follow: INDEXING_ENABLED,
     googleBot: { index: INDEXING_ENABLED, follow: INDEXING_ENABLED },
   },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", type: "image/svg+xml" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/icon.svg",
+  },
+  manifest: "/manifest.webmanifest",
 };
 
 const orgJsonLd = {

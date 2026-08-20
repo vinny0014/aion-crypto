@@ -148,6 +148,7 @@ jobs:
         env:
           NEXT_PUBLIC_SITE_URL: https://aioncrypto.cloud
           NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:3100
+          NEXT_PUBLIC_GA_MEASUREMENT_ID: G-TEST000000
       - run: npm run e2e
       - uses: actions/upload-artifact@v4
         if: failure()

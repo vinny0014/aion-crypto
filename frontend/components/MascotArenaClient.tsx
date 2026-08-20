@@ -201,15 +201,21 @@ export default function MascotArenaClient() {
         </div>
       </section>}
 
-      {arena?.mascot_of_week && <section className="mt-8 rounded-2xl border border-amber-400/30 bg-gradient-to-r from-amber-400/10 to-card p-5 sm:p-6">
-        <p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">Mascot of the Week · {arena.mascot_of_week.week}</p>
-        <h2 className="mt-2 font-display text-2xl font-bold text-white">{arena.mascot_of_week.coin} · {arena.mascot_of_week.title}</h2>
-        <p className="mt-2 text-sm text-ink-dim">Champion with {arena.mascot_of_week.votes.toLocaleString()} votes and the #1 final position.</p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link href={`/crypto/${arena.mascot_of_week.symbol}`} onClick={() => track("mascot_champion_click", { coin: arena.mascot_of_week!.symbol, source: "weekly_champion_coin" })} className="rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-black">Champion Coin</Link>
-          {arena.mascot_of_week.latest_news ? <Link href={`/news/${arena.mascot_of_week.latest_news.slug}`} onClick={() => track("mascot_champion_click", { coin: arena.mascot_of_week!.symbol, source: "weekly_champion_news" })} className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-white">Latest News</Link> : <span className="rounded-lg border border-line px-4 py-2 text-sm text-ink-dim">Latest verified coverage coming soon.</span>}
-        </div>
-      </section>}
+      <section className="mt-8 min-h-[11.5rem] rounded-2xl border border-amber-400/30 bg-gradient-to-r from-amber-400/10 to-card p-5 sm:min-h-[10.5rem] sm:p-6" aria-live="polite" aria-busy={!arena}>
+        {arena?.mascot_of_week ? <>
+          <p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">Mascot of the Week · {arena.mascot_of_week.week}</p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-white">{arena.mascot_of_week.coin} · {arena.mascot_of_week.title}</h2>
+          <p className="mt-2 text-sm text-ink-dim">Champion with {arena.mascot_of_week.votes.toLocaleString()} votes and the #1 final position.</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href={`/crypto/${arena.mascot_of_week.symbol}`} onClick={() => track("mascot_champion_click", { coin: arena.mascot_of_week!.symbol, source: "weekly_champion_coin" })} className="rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-black">Champion Coin</Link>
+            {arena.mascot_of_week.latest_news ? <Link href={`/news/${arena.mascot_of_week.latest_news.slug}`} onClick={() => track("mascot_champion_click", { coin: arena.mascot_of_week!.symbol, source: "weekly_champion_news" })} className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-white">Latest News</Link> : <span className="rounded-lg border border-line px-4 py-2 text-sm text-ink-dim">Latest verified coverage coming soon.</span>}
+          </div>
+        </> : <>
+          <p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">Mascot of the Week</p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-white">Weekly champion is being verified</h2>
+          <p className="mt-2 text-sm text-ink-dim">The confirmed winner and latest verified coverage will appear here when the live round connects.</p>
+        </>}
+      </section>
 
       <section id="ranking" ref={rankingRef} className="mt-10 scroll-mt-24" aria-labelledby="ranking-title">
         <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-primary-glow">Live standings</p><h2 id="ranking-title" className="mt-1 font-display text-3xl font-bold text-white">Weekly Top 15</h2></div><span className="chip">{arena?.round.week ?? "Loading round"}</span></div>

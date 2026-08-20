@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BACKEND, authenticatedFetch, resolveSession } from "../../lib/auth";
+import { BACKEND, authenticatedFetch, getTokens, resolveSession } from "../../lib/auth";
 import AdminEditorial from "../../components/AdminEditorial";
 
 type Overview = {
@@ -25,10 +25,11 @@ export default function AdminPage() {
     setState("loading");
     try {
       if (!BACKEND) { setState("offline"); return; }
+      const hadTokens = Boolean(getTokens());
       const session = await resolveSession({ onProgress: () => setState("waking") });
       if (session.status === "backend_unreachable") { setState("waking"); return; }
       if (session.status === "session_invalid") { setState("session_invalid"); return; }
-      if (session.status !== "authenticated") { setState("signed_out"); return; }
+      if (session.status !== "authenticated") { setState(hadTokens ? "session_invalid" : "signed_out"); return; }
       if (session.user.role !== "admin" && session.user.role !== "editor") { setState("forbidden"); return; }
       const response = await authenticatedFetch("/api/v1/admin/overview");
       if (response.status === 401 || response.status === 403) { setState("forbidden"); return; }
