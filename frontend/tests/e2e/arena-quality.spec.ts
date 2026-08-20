@@ -113,3 +113,57 @@ test("Arena re-enables voting when the rolling cooldown expires", async ({ page 
   await expect(firstVote).toBeEnabled();
   await expect(firstVote).toHaveText("VOTE");
 });
+
+test("Arena keeps CLS below 0.1 while live weekly data hydrates", async ({ page }) => {
+  const live = arenaState();
+  live.mascot_of_week = { ...live.ranking[0], week: "2026-W32" };
+  live.hall_of_fame = [{ ...live.ranking[0], week: "2026-W32", championships: 1 }];
+  await page.addInitScript(() => {
+    (window as typeof window & { __aionLayoutShifts: number[] }).__aionLayoutShifts = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (!(entry as PerformanceEntry & { hadRecentInput?: boolean }).hadRecentInput) {
+          (window as typeof window & { __aionLayoutShifts: number[] }).__aionLayoutShifts.push(
+            (entry as PerformanceEntry & { value: number }).value,
+          );
+        }
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  await page.route(ARENA_API, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.fulfill({ json: live });
+  });
+  await page.goto("/mascot-arena", { waitUntil: "domcontentloaded" });
+  await expect(page.getByText(/Mascot of the Week · 2026-W32/)).toBeVisible();
+  await page.waitForTimeout(250);
+  const cls = await page.evaluate(() => (
+    window as typeof window & { __aionLayoutShifts: number[] }
+  ).__aionLayoutShifts.reduce((total, value) => total + value, 0));
+  expect(cls).toBeLessThan(0.1);
+});
+
+test("GA4 internal marker is opt-in, session-scoped and contains no PII", async ({ page }) => {
+  await page.route(/googletagmanager\.com/, (route) => route.abort());
+  await page.goto("/?utm_source=manus&aion_internal=1", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => typeof (window as typeof window & { gtag?: unknown }).gtag === "function");
+  expect(page.url()).toContain("utm_source=manus");
+  expect(page.url()).not.toContain("aion_internal");
+  const internalState = await page.evaluate(() => ({
+    marker: sessionStorage.getItem("aion_internal_traffic"),
+    commands: (window as typeof window & { dataLayer: IArguments[] }).dataLayer.map((entry) => Array.from(entry)),
+  }));
+  expect(internalState.marker).toBe("1");
+  expect(internalState.commands).toContainEqual(["set", "traffic_type", "internal"]);
+  expect(internalState.commands).toContainEqual(["set", "ip_internal_traffic_rules_value", "1"]);
+  expect(JSON.stringify(internalState.commands)).not.toContain("@");
+
+  await page.goto("/?aion_internal=0", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => typeof (window as typeof window & { gtag?: unknown }).gtag === "function");
+  expect(page.url()).not.toContain("aion_internal");
+  const visitorCommands = await page.evaluate(() => (
+    window as typeof window & { dataLayer: IArguments[] }
+  ).dataLayer.map((entry) => Array.from(entry)));
+  expect(visitorCommands).not.toContainEqual(["set", "traffic_type", "internal"]);
+  expect(visitorCommands).not.toContainEqual(["set", "ip_internal_traffic_rules_value", "1"]);
+});

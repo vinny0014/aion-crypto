@@ -1,13 +1,23 @@
 const adsenseEnabled = process.env.NEXT_PUBLIC_ADSENSE_ENABLED === "true";
-const contentSecurityPolicy = adsenseEnabled
-  ? "default-src 'self'; base-uri 'self'; connect-src 'self' https:; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; img-src 'self' data: https:; object-src 'none'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline'"
-  : "default-src 'self'; base-uri 'self'; connect-src 'self' https:; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: https:; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'";
+const gaEnabled = Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
+const clarityEnabled = Boolean(process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID);
+const scriptSources = ["'self'", "'unsafe-inline'"];
+if (gaEnabled) scriptSources.push("https://www.googletagmanager.com");
+if (clarityEnabled) scriptSources.push("https://www.clarity.ms");
+if (adsenseEnabled) scriptSources.push("https://pagead2.googlesyndication.com");
+const frameSources = adsenseEnabled
+  ? "frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; "
+  : "";
+const contentSecurityPolicy = `default-src 'self'; base-uri 'self'; connect-src 'self' https:; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; ${frameSources}img-src 'self' data: https:; object-src 'none'; script-src ${scriptSources.join(" ")}; style-src 'self' 'unsafe-inline'`;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   poweredByHeader: false,
+  async rewrites() {
+    return [{ source: "/favicon.ico", destination: "/icon.svg" }];
+  },
   async redirects() {
     const legacyFixtureSlugs = [
       "bitcoin-etf-flows-institutional-demand",
