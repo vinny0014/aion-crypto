@@ -91,6 +91,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="text/javascript"
           dangerouslySetInnerHTML={{ __html: consentDefaultBootstrap() }}
         />
+        {process.env.NEXT_PUBLIC_ADSENSE_ENABLED === "true" && process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ? (
+          <script
+            id="adsense-loader"
+            async
+            crossOrigin="anonymous"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}`}
+          />
+        ) : null}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
         <Analytics />
