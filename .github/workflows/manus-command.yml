@@ -29,7 +29,7 @@ jobs:
         run: |
           test -n "$SCHEDULER_TOKEN"
           if [ -z "$MANUS_COMMAND" ]; then
-            MANUS_COMMAND="TASK_ID=AION-PRODUCTION-DEPLOY; validate aioncrypto.cloud after production SHA=$PRODUCTION_SHA; use ?aion_internal=1 only for the validation session; verify HTTP, desktop/mobile 360/390/412, console, network, CLS < 0.1, favicon/manifest, GA4 internal traffic, Arena live vote and ranking; return concise evidence to GitHub issue #35; complete or hand off through the coordination callback supplied by AION."
+            MANUS_COMMAND="TASK_ID=AION-PRODUCTION-ADSENSE; deploy and validate aioncrypto.cloud after production SHA=$PRODUCTION_SHA; configure Hostinger ADSENSE_PUBLISHER_ID=pub-3354845222558845 NEXT_PUBLIC_ADSENSE_CLIENT_ID=ca-pub-3354845222558845 NEXT_PUBLIC_ADSENSE_ENABLED=true and rebuild; keep Auto Ads OFF; verify /ads.txt exact record, AdSense script only after advertising consent, Consent Mode default denied, GA4 no duplication or PII, HTTP, console, network, CLS/LCP desktop and mobile 360/390/412, News, Markets, Arena, Coins, Explained, SEO and institutional pages; if readiness is at least 90 with no critical blocker submit aioncrypto.cloud for AdSense review and return the exact Google status to GitHub issue #35; otherwise return only concrete blockers; complete or hand off through the coordination callback supplied by AION."
             IDEMPOTENCY_KEY="production:$PRODUCTION_SHA"
             TASK_TITLE="Validate AION production $PRODUCTION_SHA"
           else
