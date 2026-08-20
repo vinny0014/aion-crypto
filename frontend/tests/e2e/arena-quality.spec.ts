@@ -160,23 +160,62 @@ test("GA4 internal marker is opt-in, session-scoped and contains no PII", async 
   await page.route(/googletagmanager\.com/, (route) => route.abort());
   await page.goto("/?utm_source=manus&aion_internal=1", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => typeof (window as typeof window & { gtag?: unknown }).gtag === "function");
+  await expect.poll(() => page.url()).not.toContain("aion_internal");
   expect(page.url()).toContain("utm_source=manus");
-  expect(page.url()).not.toContain("aion_internal");
+  await expect(page.getByRole("dialog", { name: "Your privacy choices" })).toBeVisible();
+  await expect(page.locator('script[src*="googletagmanager.com"]')).toHaveCount(0);
+  const beforeConsent = await page.evaluate(() => (
+    window as typeof window & { dataLayer: IArguments[] }
+  ).dataLayer.map((entry) => Array.from(entry)));
+  expect(beforeConsent).toContainEqual(["consent", "default", expect.objectContaining({
+    analytics_storage: "denied", ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied",
+  })]);
+  expect(beforeConsent.some((command) => command[0] === "event" && command[1] === "page_view")).toBe(false);
+  await page.getByRole("button", { name: "Accept all" }).click();
+  await expect(page.locator('script[src*="googletagmanager.com"]')).toHaveCount(1);
+  await page.waitForFunction(() => (window as typeof window & { dataLayer: IArguments[] }).dataLayer.some((entry) => entry[0] === "config"));
   const internalState = await page.evaluate(() => ({
     marker: sessionStorage.getItem("aion_internal_traffic"),
+    consent: localStorage.getItem("aion-cookie-consent-v2"),
     commands: (window as typeof window & { dataLayer: IArguments[] }).dataLayer.map((entry) => Array.from(entry)),
   }));
   expect(internalState.marker).toBe("1");
+  expect(internalState.consent).toContain('"analytics":true');
+  expect(internalState.consent).toContain('"advertising":true');
+  expect(internalState.commands).toContainEqual(["consent", "update", expect.objectContaining({ analytics_storage: "granted", ad_storage: "granted" })]);
   expect(internalState.commands).toContainEqual(["set", "traffic_type", "internal"]);
   expect(internalState.commands).toContainEqual(["set", "ip_internal_traffic_rules_value", "1"]);
   expect(JSON.stringify(internalState.commands)).not.toContain("@");
 
   await page.goto("/?aion_internal=0", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => typeof (window as typeof window & { gtag?: unknown }).gtag === "function");
-  expect(page.url()).not.toContain("aion_internal");
+  await expect.poll(() => page.url()).not.toContain("aion_internal");
   const visitorCommands = await page.evaluate(() => (
     window as typeof window & { dataLayer: IArguments[] }
   ).dataLayer.map((entry) => Array.from(entry)));
   expect(visitorCommands).not.toContainEqual(["set", "traffic_type", "internal"]);
   expect(visitorCommands).not.toContainEqual(["set", "ip_internal_traffic_rules_value", "1"]);
+});
+
+test("cookie controls reject, personalize and persist optional consent", async ({ page }) => {
+  await page.route(/googletagmanager\.com/, (route) => route.fulfill({ contentType: "application/javascript", body: "// isolated" }));
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Personalize" }).click();
+  await page.getByRole("checkbox", { name: /Analytics/ }).check();
+  await page.getByRole("button", { name: "Save choices" }).click();
+  await expect(page.getByRole("button", { name: "Open cookie preferences" })).toBeVisible();
+  await expect(page.locator('script[src*="googletagmanager.com"]')).toHaveCount(1);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("aion-cookie-consent-v2") ?? "null"))).toMatchObject({ analytics: true, advertising: false });
+
+  await page.getByRole("button", { name: "Open cookie preferences" }).click();
+  await page.getByRole("button", { name: "Reject optional" }).click();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("aion-cookie-consent-v2") ?? "null"))).toMatchObject({ analytics: false, advertising: false });
+  const commands = await page.evaluate(() => (
+    window as typeof window & { dataLayer: IArguments[] }
+  ).dataLayer.map((entry) => Array.from(entry)));
+  expect(commands).toContainEqual(["consent", "update", expect.objectContaining({ analytics_storage: "denied", ad_storage: "denied" })]);
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("dialog", { name: "Your privacy choices" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open cookie preferences" })).toBeVisible();
 });

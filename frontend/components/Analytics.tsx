@@ -2,15 +2,11 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { CONSENT_EVENT, googleConsentUpdate, readConsent, type ConsentChoice } from "../lib/consent";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
-
-export function analyticsBootstrap(measurementId: string) {
-  const id = JSON.stringify(measurementId);
-  return `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)};window.gtag=gtag;(function(){var key='aion_internal_traffic';var query=new URLSearchParams(window.location.search);var requested=query.get('aion_internal');if(requested==='1'){window.sessionStorage.setItem(key,'1')}else if(requested==='0'){window.sessionStorage.removeItem(key)}if(requested!==null){query.delete('aion_internal');var clean=window.location.pathname+(query.toString()?'?'+query.toString():'')+window.location.hash;window.history.replaceState({},'',clean)}gtag('js',new Date());if(window.sessionStorage.getItem(key)==='1'){gtag('set','traffic_type','internal');gtag('set','ip_internal_traffic_rules_value','1')}gtag('config',${id},{send_page_view:false})})();`;
-}
 
 export const REQUIRED_ANALYTICS_EVENTS = [
   "mascot_arena_view",
@@ -56,21 +52,53 @@ export function linkAnalyticsEvents(currentPath: string, destination: string, ex
 }
 
 export function track(event: string, params: Record<string, string | number | boolean> = {}) {
-  if (typeof window !== "undefined" && GA_ID && "gtag" in window) {
+  if (typeof window !== "undefined" && GA_ID && readConsent()?.analytics && "gtag" in window) {
     (window as typeof window & { gtag: (...args: unknown[]) => void }).gtag("event", event, params);
   }
 }
 
 export default function Analytics() {
   const pathname = usePathname();
+  const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
   useEffect(() => {
+    const current = readConsent();
+    setAnalyticsAllowed(Boolean(current?.analytics));
+    const changed = (event: Event) => setAnalyticsAllowed(Boolean((event as CustomEvent<ConsentChoice>).detail.analytics));
+    window.addEventListener(CONSENT_EVENT, changed);
+    return () => window.removeEventListener(CONSENT_EVENT, changed);
+  }, []);
+  useEffect(() => {
+    const key = "aion_internal_traffic";
+    const query = new URLSearchParams(window.location.search);
+    const requested = query.get("aion_internal");
+    if (requested === "1") window.sessionStorage.setItem(key, "1");
+    else if (requested === "0") window.sessionStorage.removeItem(key);
+    if (requested !== null) {
+      query.delete("aion_internal");
+      const clean = window.location.pathname + (query.toString() ? `?${query.toString()}` : "") + window.location.hash;
+      window.history.replaceState({}, "", clean);
+    }
+  }, []);
+  useEffect(() => {
+    if (!analyticsAllowed || !GA_ID || !("gtag" in window)) return;
+    googleConsentUpdate({ analytics: true, advertising: Boolean(readConsent()?.advertising) });
+    const gtag = (window as typeof window & { gtag: (...args: unknown[]) => void }).gtag;
+    gtag("js", new Date());
+    if (window.sessionStorage.getItem("aion_internal_traffic") === "1") {
+      gtag("set", "traffic_type", "internal");
+      gtag("set", "ip_internal_traffic_rules_value", "1");
+    }
+    gtag("config", GA_ID, { send_page_view: false });
+  }, [analyticsAllowed]);
+  useEffect(() => {
+    if (!analyticsAllowed) return;
     track("page_view", { page_path: pathname });
     if (pathname === "/markets") track("market_view");
     else if (pathname === "/mascot-arena") track("mascot_arena_view");
     else if (pathname.startsWith("/crypto/")) track("coin_view", { symbol: pathname.split("/")[2] ?? "" });
     else if (pathname.startsWith("/news/")) track("article_view");
     else if (pathname === "/search") track("search");
-  }, [pathname]);
+  }, [pathname, analyticsAllowed]);
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       const anchor = (event.target as Element | null)?.closest("a");
@@ -102,10 +130,9 @@ export default function Analytics() {
     nodes.forEach((node) => observer.observe(node));
     return () => observer.disconnect();
   }, [pathname]);
-  if (!GA_ID && !CLARITY_ID) return null;
+  if ((!GA_ID && !CLARITY_ID) || !analyticsAllowed) return null;
   return <>
     {GA_ID && <Script id="ga" src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />}
-    {GA_ID && <Script id="ga-init" strategy="afterInteractive">{analyticsBootstrap(GA_ID)}</Script>}
     {CLARITY_ID && <Script id="clarity" strategy="afterInteractive">{`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src='https://www.clarity.ms/tag/'+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,'clarity','script','${CLARITY_ID}');`}</Script>}
   </>;
 }
