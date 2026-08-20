@@ -2,6 +2,8 @@ name: AION agent coordinator
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
@@ -23,4 +25,8 @@ jobs:
             --max-time 40 \
             -X POST \
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --output /tmp/coordination.json \
             https://aion-crypto-api.onrender.com/internal/manus/coordination/tick
+          status="$(jq -r '.status // "unknown"' /tmp/coordination.json)"
+          test "$status" = "dispatched" -o "$status" = "idle"
+          echo "AION coordinator: $status"
