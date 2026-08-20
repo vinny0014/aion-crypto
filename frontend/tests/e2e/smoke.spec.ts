@@ -58,7 +58,12 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
     const response = await request.get(route);
     expect(response.status(), route).toBe(200);
   }
-  expect((await request.get("/ads.txt")).status()).toBe(404);
+  const adsTxt = await request.get("/ads.txt");
+  expect(adsTxt.status()).toBe(200);
+  expect(adsTxt.headers()["content-type"]).toContain("text/plain");
+  expect(await adsTxt.text()).toBe(
+    "google.com, pub-3354845222558845, DIRECT, f08c47fec0942fa0\n",
+  );
   const legacyFixture = await request.get("/news/bitcoin-etf-flows-institutional-demand");
   expect(legacyFixture.status()).toBe(200);
   expect(legacyFixture.url()).toBe("http://127.0.0.1:3100/news");
