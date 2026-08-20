@@ -3,6 +3,7 @@ type Tokens = { access_token: string; refresh_token: string };
 
 const ACCESS_KEY = "aion-access-token";
 const REFRESH_KEY = "aion-refresh-token";
+const INVALID_KEY = "aion-session-invalid";
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
 
 // Per-request ceiling. Prevents any call from hanging forever while the
@@ -59,11 +60,19 @@ export function getTokens(): Tokens | null {
 export function saveTokens(tokens: Tokens) {
   storage()?.setItem(ACCESS_KEY, tokens.access_token);
   storage()?.setItem(REFRESH_KEY, tokens.refresh_token);
+  storage()?.removeItem(INVALID_KEY);
 }
 
 export function clearSession() {
   storage()?.removeItem(ACCESS_KEY);
   storage()?.removeItem(REFRESH_KEY);
+  storage()?.removeItem(INVALID_KEY);
+}
+
+function invalidateSession() {
+  storage()?.removeItem(ACCESS_KEY);
+  storage()?.removeItem(REFRESH_KEY);
+  storage()?.setItem(INVALID_KEY, "1");
 }
 
 async function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
@@ -93,7 +102,7 @@ async function runRefresh(): Promise<string | null> {
   // Only a proven-invalid refresh token ends the session. A 502/503/504 from
   // the edge while the service wakes up must never log the user out.
   if (response.status === 401 || response.status === 403) {
-    clearSession();
+    invalidateSession();
     return null;
   }
   if (!response.ok) throw new NetworkError(`refresh unavailable: ${response.status}`);
@@ -131,7 +140,7 @@ export async function authenticatedFetch(path: string, init: RequestInit = {}, r
     if (access) response = await authenticatedFetch(path, init, true);
   }
   // 401 after a refresh attempt is a genuine credential rejection.
-  if (response.status === 401) clearSession();
+  if (response.status === 401) invalidateSession();
   return response;
 }
 
@@ -144,14 +153,14 @@ function emitProgress(state: SessionState) {
 async function runResolveSession(maxRetries: number): Promise<SessionState> {
   if (!BACKEND) return { status: "backend_unreachable" };
   const hadTokensAtStart = Boolean(getTokens());
-  if (!hadTokensAtStart) return { status: "signed_out" };
+  if (!hadTokensAtStart) return { status: storage()?.getItem(INVALID_KEY) === "1" ? "session_invalid" : "signed_out" };
 
   for (let attempt = 0; ; attempt += 1) {
     try {
       const response = await authenticatedFetch("/api/v1/auth/me");
       if (response.ok) return { status: "authenticated", user: (await response.json()) as AuthUser };
       if (response.status === 401 || response.status === 403) {
-        clearSession();
+        invalidateSession();
         return { status: "session_invalid" };
       }
       if (!isTransientStatus(response.status)) return { status: "backend_unreachable" };

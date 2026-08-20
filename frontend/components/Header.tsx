@@ -7,7 +7,7 @@ import { getTokens, logout, resolveSession, type SessionState } from "../lib/aut
 
 const NAV = [
   ["Markets", "/markets"], ["News", "/news"], ["Coins", "/coins"], ["Arena", "/mascot-arena"], ["Analysis", "/analysis"],
-  ["Research", "/research"], ["Guides", "/guides"], ["Learn", "/learn"], ["Glossary", "/glossary"],
+  ["Research", "/research"], ["Guides", "/guides"], ["Learn", "/learn"], ["Explained", "/explained"], ["Glossary", "/glossary"],
 ] as const;
 
 function Logo() {

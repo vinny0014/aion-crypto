@@ -7,6 +7,7 @@ import { mascotFor } from "../../../lib/mascots";
 import { AreaChart, CandleChart } from "../../../components/charts";
 import { Delta, SourceTag } from "../../../components/ui";
 import { fmtNum, fmtUsd } from "../../../lib/format";
+import { COIN_GUIDES } from "../../../lib/editorial-content";
 
 export const revalidate = 60;
 
@@ -31,6 +32,7 @@ export default async function CoinPage({ params }: Props) {
   const related = published.filter((a) => a.related_asset === sym || a.category === "Market Analysis").slice(0, 3);
   const mascot = mascotFor(sym);
   const mascotStanding = arena?.ranking.find((item) => item.symbol === sym);
+  const guide = COIN_GUIDES[sym];
 
   const stats: [string, string][] = [
     ["Market Cap", fmtUsd(d.market_cap_usd, true)],
@@ -81,6 +83,17 @@ export default async function CoinPage({ params }: Props) {
             <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide">Price — 7 days</h2>
             {klines.data ? <AreaChart klines={klines.data} /> : <p className="text-[13px] text-ink-dim">Chart temporarily unavailable.</p>}
           </section>
+          {guide && <section className="card p-5 sm:p-6" aria-labelledby="coin-guide-title">
+            <p className="text-[11px] font-bold uppercase tracking-[.16em] text-primary-glow">Coin guide</p>
+            <h2 id="coin-guide-title" className="mt-2 font-display text-2xl font-bold text-white">What is {guide.name}?</h2>
+            <p className="mt-3 text-sm leading-7 text-ink-dim">{guide.overview}</p>
+            <div className="mt-5 grid gap-5 sm:grid-cols-3">
+              <div><h3 className="text-xs font-bold uppercase tracking-wide text-white">How it works</h3><ul className="mt-2 space-y-2 text-xs leading-5 text-ink-dim">{guide.mechanics.map((item) => <li key={item}>{item}</li>)}</ul></div>
+              <div><h3 className="text-xs font-bold uppercase tracking-wide text-white">Common uses</h3><ul className="mt-2 space-y-2 text-xs leading-5 text-ink-dim">{guide.uses.map((item) => <li key={item}>{item}</li>)}</ul></div>
+              <div><h3 className="text-xs font-bold uppercase tracking-wide text-white">Principal risks</h3><ul className="mt-2 space-y-2 text-xs leading-5 text-ink-dim">{guide.risks.map((item) => <li key={item}>{item}</li>)}</ul></div>
+            </div>
+            <Link href={`/explained/${guide.explainedSlug}`} className="mt-5 inline-flex rounded-lg border border-primary/40 px-4 py-2 text-xs font-bold text-primary-glow hover:bg-primary/10 hover:text-white">Read the complete {guide.name} explainer →</Link>
+          </section>}
           {mascot && <section className="card overflow-hidden border-primary/30">
             <div className="grid sm:grid-cols-[150px_1fr]">
               <div className="relative min-h-40 bg-gradient-to-br from-primary/30 via-card to-amber-400/15">
