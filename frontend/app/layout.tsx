@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -87,7 +86,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen font-sans">
-        <Script id="consent-default" strategy="beforeInteractive">{consentDefaultBootstrap()}</Script>
+        <script
+          id="consent-default"
+          type="text/javascript"
+          dangerouslySetInnerHTML={{ __html: consentDefaultBootstrap() }}
+        />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
         <Analytics />
