@@ -11,7 +11,6 @@ html {
   color-scheme: dark;
   max-width: 100%;
   overflow-x: clip;
-  scrollbar-gutter: stable;
 }
 body {
   @apply bg-bg text-ink antialiased;

@@ -119,13 +119,25 @@ test("Arena keeps CLS below 0.1 while live weekly data hydrates", async ({ page 
   live.mascot_of_week = { ...live.ranking[0], week: "2026-W32" };
   live.hall_of_fame = [{ ...live.ranking[0], week: "2026-W32", championships: 1 }];
   await page.addInitScript(() => {
-    (window as typeof window & { __aionLayoutShifts: number[] }).__aionLayoutShifts = [];
+    type Shift = { value: number; time: number; sources: Array<{ node: string; previous: DOMRectReadOnly; current: DOMRectReadOnly }> };
+    (window as typeof window & { __aionLayoutShifts: Shift[] }).__aionLayoutShifts = [];
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        if (!(entry as PerformanceEntry & { hadRecentInput?: boolean }).hadRecentInput) {
-          (window as typeof window & { __aionLayoutShifts: number[] }).__aionLayoutShifts.push(
-            (entry as PerformanceEntry & { value: number }).value,
-          );
+        const shift = entry as PerformanceEntry & {
+          hadRecentInput?: boolean;
+          value: number;
+          sources?: Array<{ node?: Node; previousRect: DOMRectReadOnly; currentRect: DOMRectReadOnly }>;
+        };
+        if (!shift.hadRecentInput) {
+          (window as typeof window & { __aionLayoutShifts: Shift[] }).__aionLayoutShifts.push({
+            value: shift.value,
+            time: shift.startTime,
+            sources: (shift.sources ?? []).map(({ node, previousRect, currentRect }) => ({
+              node: node instanceof Element ? node.outerHTML.slice(0, 240) : node?.nodeName ?? "unknown",
+              previous: previousRect,
+              current: currentRect,
+            })),
+          });
         }
       }
     }).observe({ type: "layout-shift", buffered: true });
@@ -137,10 +149,11 @@ test("Arena keeps CLS below 0.1 while live weekly data hydrates", async ({ page 
   await page.goto("/mascot-arena", { waitUntil: "domcontentloaded" });
   await expect(page.getByText(/Mascot of the Week · 2026-W32/)).toBeVisible();
   await page.waitForTimeout(250);
-  const cls = await page.evaluate(() => (
-    window as typeof window & { __aionLayoutShifts: number[] }
-  ).__aionLayoutShifts.reduce((total, value) => total + value, 0));
-  expect(cls).toBeLessThan(0.1);
+  const shifts = await page.evaluate(() => (
+    window as typeof window & { __aionLayoutShifts: Array<{ value: number; time: number; sources: unknown[] }> }
+  ).__aionLayoutShifts);
+  const cls = shifts.reduce((total, shift) => total + shift.value, 0);
+  expect(cls, JSON.stringify(shifts)).toBeLessThan(0.1);
 });
 
 test("GA4 internal marker is opt-in, session-scoped and contains no PII", async ({ page }) => {

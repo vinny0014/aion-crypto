@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="py-10" role="status" aria-live="polite">
+    <div className="min-h-[calc(100vh-6rem)] py-10" role="status" aria-live="polite">
       <div className="h-5 w-40 animate-pulse rounded bg-bg-soft" />
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         {[0, 1, 2].map((item) => (
