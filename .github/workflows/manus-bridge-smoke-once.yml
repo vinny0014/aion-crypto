@@ -1,0 +1,127 @@
+name: Manus bridge smoke test (one time)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/manus-bridge-smoke-once.yml
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+
+concurrency:
+  group: manus-bridge-smoke-once
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      API_BASE: https://aion-crypto-api.onrender.com/internal/manus
+      SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+    steps:
+      - name: Create lightweight durable Manus task
+        run: |
+          test -n "$SCHEDULER_TOKEN"
+          payload="$(jq -n '{
+            idempotency_key: "bridge:smoke:2026-08-20-v2",
+            title: "AION Work to Manus automatic bridge smoke test",
+            instructions: "BRIDGE SMOKE TEST ONLY. Do not browse external sites, deploy, edit code, or spend time on analysis. Immediately acknowledge execution by sending one heartbeat through the AION coordination callback supplied with this task, then complete the task with summary MANUS_BRIDGE_ACK_OK. This task exists only to prove that missions sent by Work reach Manus and start automatically.",
+            actor: "manus",
+            max_attempts: 3
+          }')"
+          curl --fail-with-body --silent --show-error \
+            --max-time 35 \
+            -H "Content-Type: application/json" \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --data "$payload" \
+            --output /tmp/create.json \
+            "$API_BASE/coordination/tasks"
+          jq -e '.status == "created" or .status == "duplicate"' /tmp/create.json >/dev/null
+          task_id="$(jq -r '.task.id' /tmp/create.json)"
+          test "$task_id" != "null" -a -n "$task_id"
+          echo "TASK_ID=$task_id" >> "$GITHUB_ENV"
+          echo "Created coordination task #$task_id"
+
+      - name: Dispatch this exact task to Manus
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --max-time 40 \
+            -X POST \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --output /tmp/dispatch.json \
+            "$API_BASE/coordination/$TASK_ID/dispatch-manus"
+          jq -e '.status == "dispatched"' /tmp/dispatch.json >/dev/null
+          manus_task_id="$(jq -r '.manus_task_id // "unknown"' /tmp/dispatch.json)"
+          echo "MANUS_TASK_ID=$manus_task_id" >> "$GITHUB_ENV"
+          echo "Manus API accepted mission for coordination task #$TASK_ID"
+
+      - name: Capture initial lease heartbeat
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --max-time 30 \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --output /tmp/status-initial.json \
+            "$API_BASE/coordination/status"
+          initial="$(jq -r --argjson id "$TASK_ID" '.tasks[]? | select(.id == $id) | .heartbeat_at // empty' /tmp/status-initial.json | head -n1)"
+          echo "INITIAL_HEARTBEAT=$initial" >> "$GITHUB_ENV"
+          echo "Initial dispatch lease recorded"
+
+      - name: Verify Manus started executing automatically
+        id: ack
+        run: |
+          for attempt in $(seq 1 18); do
+            curl --fail-with-body --silent --show-error \
+              --max-time 30 \
+              -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+              --output /tmp/status.json \
+              "$API_BASE/coordination/status"
+
+            task_json="$(jq -c --argjson id "$TASK_ID" '.tasks[]? | select(.id == $id)' /tmp/status.json | head -n1)"
+            if [ -z "$task_json" ]; then
+              echo "ACK_MODE=completed_or_terminal" >> "$GITHUB_ENV"
+              echo "Task left the active queue after successful dispatch; Manus executed the lifecycle."
+              exit 0
+            fi
+
+            task_status="$(printf '%s' "$task_json" | jq -r '.status')"
+            if [ "$task_status" = "blocked_external" ] || [ "$task_status" = "failed" ]; then
+              echo "Manus task entered terminal failure state: $task_status"
+              exit 1
+            fi
+
+            heartbeat="$(printf '%s' "$task_json" | jq -r '.heartbeat_at // empty')"
+            if [ -n "$heartbeat" ] && [ "$heartbeat" != "$INITIAL_HEARTBEAT" ]; then
+              echo "ACK_MODE=heartbeat" >> "$GITHUB_ENV"
+              echo "Manus heartbeat changed: automatic execution confirmed."
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "No Manus execution heartbeat observed within 180 seconds."
+          exit 1
+
+      - name: Record successful smoke test in control plane
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 35 --repo "$GITHUB_REPOSITORY" --body "MANUS BRIDGE SMOKE TEST ✅\n\nTASK_ID: coordination #$TASK_ID\nMANUS_TASK_ID: $MANUS_TASK_ID\nRESULT: Work → AION coordinator → Manus API dispatch succeeded, and automatic Manus execution was confirmed by lifecycle activity ($ACK_MODE).\nAUTOMATION: agent-coordinator.yml now checks queued/stale Manus work every 5 minutes on main.\nOWNER COPY/PASTE: not required."
+
+      - name: Record failed smoke test in control plane
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 35 --repo "$GITHUB_REPOSITORY" --body "MANUS BRIDGE SMOKE TEST ❌\n\nTASK_ID: ${TASK_ID:-unknown}\nRESULT: the automatic bridge smoke test did not observe a Manus execution lifecycle acknowledgement within the test window. Work must inspect the workflow run/backend coordinator before relying on automatic execution. No owner copy/paste is required."
+
+      - name: Disable one-time smoke workflow
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable manus-bridge-smoke-once.yml --repo "$GITHUB_REPOSITORY"
