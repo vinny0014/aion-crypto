@@ -1,6 +1,8 @@
 name: Manus command bridge
 
 on:
+  push:
+    branches: ["codex/aion-crypto-production-review"]
   workflow_dispatch:
     inputs:
       command:
@@ -22,8 +24,13 @@ jobs:
       - name: Send protected command
         env:
           MANUS_COMMAND: ${{ inputs.command }}
+          PRODUCTION_SHA: ${{ github.sha }}
           SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
         run: |
+          test -n "$SCHEDULER_TOKEN"
+          if [ -z "$MANUS_COMMAND" ]; then
+            MANUS_COMMAND="TASK_ID=AION-PRODUCTION-DEPLOY; validate aioncrypto.cloud after production SHA=$PRODUCTION_SHA; verify HTTP, desktop/mobile, console, network, CLS, favicon/manifest and GA4 internal traffic; return evidence to GitHub issue #35."
+          fi
           payload="$(jq -n --arg command "$MANUS_COMMAND" '{command: $command}')"
           curl --fail-with-body --silent --show-error \
             --max-time 35 \
@@ -31,3 +38,13 @@ jobs:
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
             --data "$payload" \
             https://aion-crypto-api.onrender.com/internal/manus/send
+      - name: Recover stale work and dispatch the queued Manus task
+        env:
+          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+        run: |
+          test -n "$SCHEDULER_TOKEN"
+          curl --fail-with-body --silent --show-error \
+            --max-time 40 \
+            -X POST \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            https://aion-crypto-api.onrender.com/internal/manus/coordination/tick
