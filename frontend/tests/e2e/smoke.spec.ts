@@ -37,6 +37,7 @@ const documentRoutes = [
 
 test("production routes, SEO identity and responsive layouts", async ({ page, request }) => {
   const errors: string[] = [];
+  await page.addInitScript(() => localStorage.setItem("aion-cookie-consent-v2", JSON.stringify({ analytics: false, advertising: false, decidedAt: "2026-08-20T00:00:00.000Z" })));
   await page.route("https://www.googletagmanager.com/**", (route) => route.fulfill({
     contentType: "application/javascript",
     body: "// analytics network isolated in E2E",

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Analytics from "../components/Analytics";
 import AdSenseBootstrap from "../components/AdSenseBootstrap";
+import ConsentManager from "../components/ConsentManager";
+import { consentDefaultBootstrap } from "../lib/consent";
 import {
   APP_NAME,
   INDEXING_ENABLED,
@@ -84,10 +87,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen font-sans">
+        <Script id="consent-default" strategy="beforeInteractive">{consentDefaultBootstrap()}</Script>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
         <Analytics />
         <AdSenseBootstrap />
+        <ConsentManager />
         <Header />
         <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-5">{children}</main>
         <Footer />

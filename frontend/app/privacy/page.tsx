@@ -20,7 +20,11 @@ export default function Page() {
       </section>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">Cookies and analytics</h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Analytics is only active when a valid measurement ID is configured. We do not run third-party advertising trackers at this stage.</p>
+        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">Optional analytics and advertising storage is denied by default. Google Analytics loads only after you grant analytics consent. If Google AdSense is activated later, its script and advertising storage will load only after advertising consent. You can reject, accept or change these choices through Cookie settings.</p>
+      </section>
+      <section className="mt-6">
+        <h2 className="text-[15px] font-semibold">Google services</h2>
+        <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">With your permission, Google may process device, browser and usage information to provide aggregate measurement or advertising. Google acts as a third-party provider under its own privacy terms. We do not send email addresses or other direct identifiers in analytics events.</p>
       </section>
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold">Your rights</h2>
