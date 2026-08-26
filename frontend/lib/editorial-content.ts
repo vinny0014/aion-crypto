@@ -34,6 +34,30 @@ export const COIN_GUIDES: Record<string, CoinGuide> = {
     risks: ["Validator and ecosystem concentration concerns", "Regulatory uncertainty", "Market volatility", "Dependence on adoption and liquidity"],
     explainedSlug: "xrp",
   },
+  SOL: {
+    name: "Solana", symbol: "SOL", purpose: "High-throughput public blockchain for applications, payments and digital assets",
+    overview: "Solana is a public blockchain designed to process transactions quickly and at comparatively low fees. SOL is used for transaction fees, staking and participation in applications built on the network.",
+    mechanics: ["Validators process transactions and help secure the network through delegated proof of stake.", "The network uses a timestamping design called proof of history to help order activity.", "Applications use smart contracts, commonly called programs, to run on-chain rules."],
+    uses: ["Transaction fees and staking", "On-chain trading and payments", "Digital collectibles and consumer applications"],
+    risks: ["Network congestion or outages", "Smart-contract and wallet exploits", "Validator concentration concerns", "Rapidly changing application and token risks"],
+    explainedSlug: "solana",
+  },
+  BNB: {
+    name: "BNB", symbol: "BNB", purpose: "Native utility asset used across the BNB Chain ecosystem",
+    overview: "BNB is the native asset used for network fees and staking on BNB Chain. It is also used in products and applications connected to the wider BNB Chain ecosystem, each with its own terms, custody model and risks.",
+    mechanics: ["Validators secure BNB Smart Chain through a delegated staking model.", "BNB is used to pay transaction fees and interact with applications.", "Token supply mechanics can include scheduled burns under published network or ecosystem rules."],
+    uses: ["Network fees", "Staking and validator delegation", "Access to applications built on BNB Chain"],
+    risks: ["Ecosystem and validator concentration", "Smart-contract and bridge failures", "Regulatory and platform dependence", "Price and liquidity volatility"],
+    explainedSlug: "bnb",
+  },
+  ADA: {
+    name: "Cardano", symbol: "ADA", purpose: "Native asset of the Cardano proof-of-stake network",
+    overview: "ADA is the native asset of Cardano, a public proof-of-stake blockchain. It is used for transaction fees, staking and participation in applications that use Cardano's settlement layer.",
+    mechanics: ["Stake pools participate in the Ouroboros proof-of-stake protocol.", "Holders can delegate ADA without transferring custody to a pool.", "Smart contracts use Cardano's extended UTXO accounting model."],
+    uses: ["Network fees", "Stake delegation", "Transfers and application settlement"],
+    risks: ["Adoption and liquidity uncertainty", "Application and smart-contract risk", "Staking-provider risk", "Market and regulatory volatility"],
+    explainedSlug: "cardano",
+  },
 };
 
 export type ExplainedGuide = {
@@ -72,6 +96,33 @@ export const EXPLAINED_GUIDES: ExplainedGuide[] = [
       { heading: "How XRP may be used", paragraphs: ["XRP can be transferred directly, used for ledger fees and reserves, or serve as a bridge asset where adequate liquidity exists. A possible use is not evidence of guaranteed adoption."] },
       { heading: "Principal risks", paragraphs: ["XRP remains volatile and exposed to regulatory, liquidity, custody and ecosystem risks. Users should distinguish the public ledger, the XRP asset and companies that build services around them."] },
     ], relatedCoins: ["XRP"],
+  },
+  {
+    slug: "solana", title: "What Is Solana?", description: "Learn how Solana works, what SOL is used for, how staking works and the main risks to consider.",
+    answer: "Solana is a public blockchain built for applications that need frequent, low-cost transactions. SOL is used to pay network fees, stake with validators and interact with applications on the network.",
+    sections: [
+      { heading: "How Solana processes activity", paragraphs: ["Solana combines a proof-of-stake validator network with a method for recording transaction order called proof of history. This design aims to let validators process activity efficiently, but transaction throughput and fees can still change with demand and network conditions."], points: ["Validators propose and confirm blocks", "SOL pays transaction fees", "Programs provide smart-contract functionality"] },
+      { heading: "Staking and applications", paragraphs: ["SOL holders can delegate to validators to participate in staking. Delegation does not remove the need to assess validator reliability, wallet safety or the risks of applications using the network."], points: ["Delegated staking", "On-chain exchanges and payments", "Consumer and creator applications"] },
+      { heading: "Principal risks", paragraphs: ["SOL is volatile. Users can also face network disruption, malicious signing requests, smart-contract bugs, phishing and losses from bridges or application failures. A low transaction fee does not make a transaction reversible."] },
+    ], relatedCoins: ["SOL"],
+  },
+  {
+    slug: "bnb", title: "What Is BNB?", description: "A factual guide to BNB, BNB Chain, network fees, staking, ecosystem use and key risks.",
+    answer: "BNB is the native utility asset used for fees and staking on BNB Chain. Its role in other products depends on the specific service, application or platform involved.",
+    sections: [
+      { heading: "BNB and BNB Chain", paragraphs: ["BNB is used to pay transaction fees on BNB Smart Chain and can be delegated for staking. BNB Chain supports smart-contract applications, so interacting with the network may involve both the BNB asset and independent third-party protocols."], points: ["Transaction-fee utility", "Delegated validator model", "Smart-contract application ecosystem"] },
+      { heading: "What ownership does and does not mean", paragraphs: ["Holding BNB does not create a claim on a company, an exchange or the performance of applications. Users should distinguish the public blockchain, the token and services that may choose to use the asset."], points: ["Network utility differs from equity", "Application terms can differ", "Custody choices affect control"] },
+      { heading: "Principal risks", paragraphs: ["BNB is exposed to broad crypto-market volatility as well as ecosystem concentration, regulation, validator incentives and smart-contract or bridge failures. Tokens sent through a wrong network or to a malicious contract may be unrecoverable."] },
+    ], relatedCoins: ["BNB"],
+  },
+  {
+    slug: "cardano", title: "What Is Cardano?", description: "Understand Cardano, ADA, stake pools, the proof-of-stake model and the main risks of using the network.",
+    answer: "Cardano is a public proof-of-stake blockchain. ADA is used for transaction fees, stake delegation and transfers or applications that settle on the network.",
+    sections: [
+      { heading: "How Cardano works", paragraphs: ["Cardano uses a proof-of-stake protocol called Ouroboros. Stake pools participate in block production, while ADA holders may delegate stake to a pool. Delegation is not a promise of return and does not eliminate market, service or protocol risk."], points: ["Proof-of-stake consensus", "Stake-pool delegation", "Extended UTXO accounting model"] },
+      { heading: "ADA, staking and applications", paragraphs: ["ADA is the network's native asset. It is used to pay fees and can be delegated to a stake pool. Applications on Cardano may introduce their own token, smart-contract and liquidity risks beyond the base network."], points: ["Transaction fees", "Delegated staking", "Transfers and on-chain applications"] },
+      { heading: "Principal risks", paragraphs: ["ADA can move sharply in price. Other risks include application exploits, phishing, custody errors, changes in regulation, liquidity constraints and the possibility that expected adoption does not materialize."] },
+    ], relatedCoins: ["ADA"],
   },
   {
     slug: "crypto-wallet", title: "What Is a Crypto Wallet?", description: "Learn what crypto wallets store, how private keys work and how to reduce custody mistakes.",
