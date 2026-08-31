@@ -20,6 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${sym} Price, Chart & Market Data`,
     description: `Live ${sym} price, 24h change, volume, market cap and charts on AION Crypto.`,
     alternates: { canonical: `/crypto/${sym}` },
+    robots: COIN_GUIDES[sym] ? { index: true, follow: true } : { index: false, follow: true },
   };
 }
 

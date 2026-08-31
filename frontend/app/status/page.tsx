@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "System Status",
   description: "Frontend: operational. Backend API and market data sources report their status through the /health endpoint and are surfaced on every data block via s",
   alternates: { canonical: "/status" },
+  robots: { index: false, follow: true },
 };
 
 export default function Page() {

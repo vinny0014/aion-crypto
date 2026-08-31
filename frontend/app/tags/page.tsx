@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Tags",
   description: "BITCOIN · ETHEREUM · ALTCOINS · DEFI · REGULATION · GUIDE. Tags appear on every article card and article page; tag landing pages with filtered feeds s",
   alternates: { canonical: "/tags" },
+  robots: { index: false, follow: true },
 };
 
 export default function Page() {
