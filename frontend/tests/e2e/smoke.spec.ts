@@ -13,6 +13,13 @@ const pageRoutes = [
   "/explained/xrp",
   "/explained/crypto-wallet",
   "/explained/bitcoin-etf",
+  "/explained/evaluate-cryptocurrency",
+  "/explained/stablecoins",
+  "/explained/crypto-scams",
+  "/guides",
+  "/learn",
+  "/analysis",
+  "/research",
   "/mascot-arena",
   "/news",
   "/search?q=bitcoin",
@@ -127,6 +134,16 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
   const explainedJsonLd = await page.locator('script[type="application/ld+json"]').evaluateAll((scripts) => scripts.map((script) => JSON.parse(script.textContent || "{}")));
   expect(explainedJsonLd.some((entry) => entry["@type"] === "Article" && entry.headline === "What Is Bitcoin?")).toBe(true);
   expect(sitemap).toContain("<loc>https://aioncrypto.cloud/explained/bitcoin</loc>");
+
+  await page.goto("/explained", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("link", { name: "Read the guide →" })).toHaveCount(23);
+  await page.goto("/explained/evaluate-cryptocurrency", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { level: 2, name: "Primary references" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Frequently asked questions" })).toBeVisible();
+  const qualityJsonLd = await page.locator('script[type="application/ld+json"]').evaluateAll((scripts) => scripts.map((script) => JSON.parse(script.textContent || "{}")));
+  expect(qualityJsonLd.some((entry) => entry["@type"] === "BreadcrumbList")).toBe(true);
+  expect(qualityJsonLd.some((entry) => entry["@type"] === "FAQPage")).toBe(true);
+  expect(sitemap).toContain("<loc>https://aioncrypto.cloud/explained/evaluate-cryptocurrency</loc>");
 
   await page.goto("/mascot-arena", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 1, name: "Battle for the Crown" })).toBeVisible();

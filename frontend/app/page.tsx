@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getGlobal, getKlines, getMarketsTable, getMascotArena, getPublishedArticles, getTicker } from "../lib/api";
 import {
-  ArticlesGrid, GlobalMetricsBar, HeroRow, MarketRow, MascotArenaPreview, MoversRow, NewsletterBand, SnapshotsRow, TickerBar,
+  ArticlesGrid, EvergreenLibrary, GlobalMetricsBar, HeroRow, MarketRow, MascotArenaPreview, MoversRow, NewsletterBand, SnapshotsRow, TickerBar,
 } from "../components/home";
 import { APP_NAME, SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";
 
@@ -51,8 +51,9 @@ export default async function Home() {
       <MarketRow btcKlines={btcKlines} table={table} g={global_} />
       <MoversRow table={table} />
       <SnapshotsRow ticker={ticker} />
+      <EvergreenLibrary />
       <MascotArenaPreview arena={arena} />
-      <ArticlesGrid articles={articles} />
+      <ArticlesGrid articles={articles.slice(10)} />
       <NewsletterBand />
     </>
   );

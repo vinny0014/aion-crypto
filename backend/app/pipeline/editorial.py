@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from difflib import SequenceMatcher
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote, urlparse
 
@@ -38,6 +39,54 @@ TITLE_STOPWORDS = {
     "about", "after", "before", "from", "into", "market", "news", "that", "their",
     "this", "with", "will", "crypto", "cryptocurrency", "publishes", "published",
 }
+MIN_BODY_CHARS = {"breaking": 900, "default": 1_400}
+MIN_UNIQUE_WORDS = {"breaking": 90, "default": 130}
+QUALITY_DIMENSIONS = {
+    "context": ("context", "background", "previous", "history", "timeline", "record"),
+    "impact": ("impact", "matters", "means for", "affect", "implication", "operational"),
+    "risk": ("risk", "uncertain", "limitation", "does not", "cannot", "volatil", "failure"),
+    "verification": ("source", "evidence", "official", "filing", "data", "confirm", "verify"),
+    "next_step": ("watch", "monitor", "update", "next", "check", "review"),
+}
+
+
+def _normalized_words(value: str) -> list[str]:
+    return re.findall(r"[a-z0-9]+", value.lower())
+
+
+def _quality_findings(article: Article, urls: list[str]) -> list[str]:
+    """Return explainable publication blockers for generated or human drafts.
+
+    These checks sit after source verification and before SEO/publication. They
+    deliberately assess useful editorial dimensions rather than trusting the
+    name of the writing provider or a raw word-count target.
+    """
+    body = article.body.strip()
+    combined = f"{article.summary}\n{body}".lower()
+    threshold_key = "breaking" if article.priority == "breaking" else "default"
+    findings: list[str] = []
+    if len(article.summary.strip()) < 80:
+        findings.append("summary must explain the verified event in at least 80 characters")
+    if len(body) < MIN_BODY_CHARS[threshold_key]:
+        findings.append(f"body must contain at least {MIN_BODY_CHARS[threshold_key]} characters of original context")
+    if len(set(_normalized_words(body))) < MIN_UNIQUE_WORDS[threshold_key]:
+        findings.append("body vocabulary is too repetitive for publication")
+    if len([part for part in re.split(r"\n\s*\n", body) if len(part.strip()) >= 80]) < 5:
+        findings.append("body needs at least five substantive paragraphs")
+    if not article.source_name.strip():
+        findings.append("identified source name is required")
+    if not urls:
+        findings.append("at least one public evidence URL is required")
+    for label, terms in QUALITY_DIMENSIONS.items():
+        if not any(term in combined for term in terms):
+            findings.append(f"missing editorial dimension: {label}")
+    return findings
+
+
+def _near_duplicate_title(title: str, existing: str) -> bool:
+    left = " ".join(_normalized_words(title))
+    right = " ".join(_normalized_words(existing))
+    return bool(left and right) and SequenceMatcher(None, left, right).ratio() >= 0.78
 
 
 def utcnow() -> datetime:
@@ -102,6 +151,16 @@ class EditorialPipeline:
             if reject_duplicate:
                 raise DuplicateArticleError(duplicate.id)
             return duplicate
+        is_daily_snapshot = title.lower().startswith("daily crypto market snapshot")
+        if not is_daily_snapshot:
+            recent_titles = self.db.execute(
+                select(Article.id, Article.title).order_by(Article.created_at.desc()).limit(100)
+            ).all()
+            near_duplicate = next((row for row in recent_titles if _near_duplicate_title(title, row.title)), None)
+            if near_duplicate:
+                if reject_duplicate:
+                    raise DuplicateArticleError(near_duplicate.id)
+                return self.db.get(Article, near_duplicate.id)
         base_slug = canonical_slug
         slug = base_slug
         suffix = 1
@@ -143,14 +202,16 @@ class EditorialPipeline:
                 raise ValueError("editor-chief requires verified content")
             self.record(article, agent, "drafting")
         elif agent == "writer":
-            if len(article.body.strip()) < (300 if article.priority == "breaking" else 800):
-                self.record(article, agent, "reviewing", result="manual_required", reason="Body requires original reporting/context before publication")
+            findings = _quality_findings(article, urls)
+            if findings:
+                article.rejection_reason = "; ".join(findings)
+                self.record(article, agent, "reviewing", result="manual_required", reason=article.rejection_reason)
                 self.db.commit()
                 return {"article_id": article.id, "status": article.status, "confidence": article.confidence_score, "advance": False}
             else:
                 self.record(article, agent, "reviewing")
         elif agent == "reviewer":
-            generic = len(set(re.findall(r"\w+", article.body.lower()))) < 90
+            generic = len(set(_normalized_words(article.body))) < MIN_UNIQUE_WORDS["breaking" if article.priority == "breaking" else "default"]
             title_terms = {
                 token for token in re.findall(r"[a-z0-9]+", article.title.lower())
                 if len(token) > 3 and token not in TITLE_STOPWORDS
@@ -179,7 +240,7 @@ class EditorialPipeline:
                 self.record(article, agent, "compliance_failed", result="blocked", reason=article.rejection_reason)
             else:
                 article.compliance_approved = True
-                article.originality_approved = len(article.body) >= (300 if article.priority == "breaking" else 800)
+                article.originality_approved = not _quality_findings(article, urls)
                 target = "ready" if article.originality_approved and article.confidence_score >= self.settings.editorial_minimum_confidence else "reviewing"
                 self.record(article, agent, target, reason="manual review required" if target != "ready" else "")
         elif agent == "publisher":

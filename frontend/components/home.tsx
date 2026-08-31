@@ -64,7 +64,7 @@ export function GlobalMetricsBar({ g }: { g: Wrapped<GlobalMetrics> }) {
 export function HeroRow({ ticker, articles }: { ticker: Wrapped<TickerCoin[]>; articles: PublishedArticle[] }) {
   const hero = articles[0];
   const latest = articles.slice(1, 5);
-  const moreCoverage = articles.slice(0, 5);
+  const moreCoverage = articles.slice(5, 10);
   const coins = ticker.data ?? [];
   const upShare = coins.length ? Math.round((coins.filter((c) => c.change_24h_pct >= 0).length / coins.length) * 100) : null;
 
@@ -316,6 +316,23 @@ export function ArticlesGrid({ articles }: { articles: PublishedArticle[] }) {
       {!articles.length && <div className="card p-5 text-sm text-ink-dim">No verified articles are published yet.</div>}
     </section>
   );
+}
+
+export function EvergreenLibrary() {
+  const guides = [
+    ["Evaluate a cryptocurrency", "/explained/evaluate-cryptocurrency", "Research purpose, supply, security and liquidity."],
+    ["Protect a seed phrase", "/explained/seed-phrase-security", "Build a recovery process without exposing the secret."],
+    ["Understand stablecoins", "/explained/stablecoins", "Compare reserves, collateral, redemption and peg risk."],
+    ["Read market liquidity", "/explained/market-cap-volume-liquidity", "Separate valuation, reported volume and executable depth."],
+    ["Recognize crypto scams", "/explained/crypto-scams", "Verify identity, links and wallet requests before acting."],
+    ["Control portfolio risk", "/explained/portfolio-risk", "Set limits, map dependencies and define rebalancing rules."],
+  ];
+  return <section className="mt-6" aria-labelledby="evergreen-library-title">
+    <SectionTitle href="/guides" linkLabel="All Guides">Research &amp; Guides</SectionTitle>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{guides.map(([title, href, description]) => <Link key={href} href={href} className="card group p-4 hover:border-primary/50">
+      <h2 className="font-display text-base font-bold text-white group-hover:text-primary-glow">{title}</h2><p className="mt-2 text-xs leading-5 text-ink-dim">{description}</p>
+    </Link>)}</div>
+  </section>;
 }
 
 // ── 7. Newsletter band ───────────────────────────────────────────
