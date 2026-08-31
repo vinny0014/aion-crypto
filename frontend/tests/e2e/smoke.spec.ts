@@ -144,6 +144,11 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
   expect(qualityJsonLd.some((entry) => entry["@type"] === "BreadcrumbList")).toBe(true);
   expect(qualityJsonLd.some((entry) => entry["@type"] === "FAQPage")).toBe(true);
   expect(sitemap).toContain("<loc>https://aioncrypto.cloud/explained/evaluate-cryptocurrency</loc>");
+  expect(sitemap).not.toContain("<loc>https://aioncrypto.cloud/categories</loc>");
+  expect(sitemap).not.toContain("<loc>https://aioncrypto.cloud/tags</loc>");
+  expect(sitemap).not.toContain("<loc>https://aioncrypto.cloud/status</loc>");
+  expect(sitemap).not.toContain("<loc>https://aioncrypto.cloud/newsletter</loc>");
+  expect(sitemap).not.toContain("<loc>https://aioncrypto.cloud/crypto/DOGE</loc>");
 
   await page.goto("/mascot-arena", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 1, name: "Battle for the Crown" })).toBeVisible();

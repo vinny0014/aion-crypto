@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Categories",
   description: "Markets — price action and flows. Technology — protocol upgrades and infrastructure. Regulation — laws and policy. Analysis — interpretation. Guides —",
   alternates: { canonical: "/categories" },
+  robots: { index: false, follow: true },
 };
 
 export default function Page() {

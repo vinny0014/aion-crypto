@@ -9,13 +9,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPaths = [
     "", "/markets", "/coins", "/mascot-arena", "/analysis", "/research", "/guides", "/learn", "/explained", "/glossary",
     "/about", "/contact", "/privacy", "/terms", "/disclaimer", "/risk-disclosure",
-    "/editorial-policy", "/corrections-policy", "/newsletter", "/status", "/categories", "/tags",
+    "/editorial-policy", "/corrections-policy",
     "/cookie-policy", "/sources-methodology", "/copyright-dmca", "/publisher", "/author/aion-crypto", "/accessibility",
   ];
-  const coins = [
-    "BTC", "ETH", "XRP", "SOL", "BNB", "DOGE", "ADA", "LINK",
-    "AVAX", "DOT", "SHIB", "PEPE", "HYPE", "TRX", "SUI",
-  ];
+  const coins = ["BTC", "ETH", "XRP", "SOL", "BNB", "ADA"];
   const articles = await getPublishedArticles();
   return [
     ...staticPaths.map((p) => ({ url: `${SITE_URL}${p}`, changeFrequency: "daily" as const })),
