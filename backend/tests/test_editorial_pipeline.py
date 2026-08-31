@@ -35,7 +35,7 @@ def test_full_free_pipeline_reaches_ready_and_prepares_outbox(session):
     pipeline = EditorialPipeline(session)
     article = pipeline.create_detected(
         title="Bitcoin protocol release publishes a documented security update",
-        summary="The official release documents the change and its operational context.",
+        summary="The official release documents the verified change, its operational context and the affected node-operator workflow.",
         body=original_body(), category="Bitcoin", priority="high",
         source_urls=["https://example.com/official-release"], source_name="Example official source",
         related_asset="BTC",
@@ -85,6 +85,42 @@ def test_thin_story_stays_in_review_instead_of_publishing(session):
     assert result["done"] == 4
     assert article.status == "reviewing"
     assert article.published_at is None
+
+
+def test_long_but_low_value_story_stays_in_review(session):
+    pipeline = EditorialPipeline(session)
+    article = pipeline.create_detected(
+        title="Ethereum market update repeats a generic price narrative",
+        summary="A generic market update repeats the same unsupported price observation without useful context or verification.",
+        body=("Ethereum price moved today. The crypto market moved today. " * 80),
+        category="Ethereum", priority="normal",
+        source_urls=["https://example.com/market-update"], source_name="Example market feed",
+    )
+    commander = build_commander(session)
+    commander.enqueue("radar", {"article_id": article.id})
+    commander.run_cycle()
+    session.refresh(article)
+    assert article.status == "reviewing"
+    assert "repetitive" in article.rejection_reason
+    assert article.published_at is None
+
+
+def test_near_duplicate_title_is_idempotent(session):
+    pipeline = EditorialPipeline(session)
+    first = pipeline.create_detected(
+        title="Bitcoin developers publish an urgent node security update",
+        summary="A sufficiently detailed summary describing the verified technical update and its operational scope.",
+        body="", category="Bitcoin", priority="normal",
+        source_urls=["https://example.com/update-one"], source_name="Primary source",
+    )
+    second = pipeline.create_detected(
+        title="Bitcoin developer publishes urgent security update for nodes",
+        summary="A second rendering of the same event from another public source with no additional value.",
+        body="", category="Bitcoin", priority="normal",
+        source_urls=["https://example.org/update-two"], source_name="Secondary source",
+    )
+    assert second.id == first.id
+    assert session.query(Article).count() == 1
 
 
 def test_compliance_blocks_profit_promise(session):
