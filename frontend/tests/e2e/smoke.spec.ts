@@ -123,6 +123,10 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
   expect(newsSitemap).not.toContain("<news:news>");
   const homeHtml = await (await request.get("/")).text();
   expect(homeHtml).not.toContain("bitcoin-etf-flows-institutional-demand");
+  const homeNewsHrefs = await page.locator('main a[href^="/news/"]').evaluateAll((links) =>
+    links.map((link) => link.getAttribute("href")).filter(Boolean),
+  );
+  expect(new Set(homeNewsHrefs).size, `duplicate rendered home news links: ${JSON.stringify(homeNewsHrefs)}`).toBe(homeNewsHrefs.length);
 
   await page.goto("/coins", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 1, name: "Prices are the start, not the whole story" })).toBeVisible();
@@ -147,7 +151,9 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
     ["cardano", "What Is Cardano?"],
   ] as const) {
     errors.length = 0;
-    await page.goto(`/explained/${slug}`, { waitUntil: "domcontentloaded" });
+    const guideResponse = await page.goto(`/explained/${slug}`, { waitUntil: "domcontentloaded" });
+    expect(guideResponse?.status(), slug).toBe(200);
+    expect(guideResponse?.headers()["cache-control"], slug).toMatch(/(?:no-store|no-cache)/);
     await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
     await expect(page.getByText("Reviewed by the AION Crypto editorial desk", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Primary references" })).toBeVisible();
