@@ -52,7 +52,7 @@ export default async function Home() {
       <MoversRow table={table} />
       <SnapshotsRow ticker={ticker} />
       <EvergreenLibrary />
-      <MascotArenaPreview arena={arena} />
+      <MascotArenaPreview arena={arena} excludedNewsSlugs={articles.slice(0, 16).map((article) => article.slug)} />
       <ArticlesGrid articles={articles.slice(10)} />
       <NewsletterBand />
     </>

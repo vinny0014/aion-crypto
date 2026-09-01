@@ -11,6 +11,9 @@ const pageRoutes = [
   "/explained/bitcoin",
   "/explained/ethereum",
   "/explained/xrp",
+  "/explained/solana",
+  "/explained/bnb",
+  "/explained/cardano",
   "/explained/crypto-wallet",
   "/explained/bitcoin-etf",
   "/explained/evaluate-cryptocurrency",
@@ -134,6 +137,28 @@ test("production routes, SEO identity and responsive layouts", async ({ page, re
   const explainedJsonLd = await page.locator('script[type="application/ld+json"]').evaluateAll((scripts) => scripts.map((script) => JSON.parse(script.textContent || "{}")));
   expect(explainedJsonLd.some((entry) => entry["@type"] === "Article" && entry.headline === "What Is Bitcoin?")).toBe(true);
   expect(sitemap).toContain("<loc>https://aioncrypto.cloud/explained/bitcoin</loc>");
+
+  for (const [slug, title] of [
+    ["bitcoin", "What Is Bitcoin?"],
+    ["ethereum", "What Is Ethereum?"],
+    ["xrp", "What Is XRP?"],
+    ["solana", "What Is Solana?"],
+    ["bnb", "What Is BNB?"],
+    ["cardano", "What Is Cardano?"],
+  ] as const) {
+    errors.length = 0;
+    await page.goto(`/explained/${slug}`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+    await expect(page.getByText("Reviewed by the AION Crypto editorial desk", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Primary references" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Frequently asked questions" })).toBeVisible();
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", `https://aioncrypto.cloud/explained/${slug}`);
+    const guideJsonLd = await page.locator('script[type="application/ld+json"]').evaluateAll((scripts) => scripts.map((script) => JSON.parse(script.textContent || "{}")));
+    expect(guideJsonLd.some((entry) => entry["@type"] === "Article" && entry.headline === title), slug).toBe(true);
+    expect(guideJsonLd.some((entry) => entry["@type"] === "BreadcrumbList"), slug).toBe(true);
+    expect(guideJsonLd.some((entry) => entry["@type"] === "FAQPage"), slug).toBe(true);
+    expect(errors, slug).toEqual([]);
+  }
 
   await page.goto("/explained", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("link", { name: "Read the guide →" })).toHaveCount(23);
