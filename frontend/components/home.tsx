@@ -83,7 +83,7 @@ export function HeroRow({ ticker, articles }: { ticker: Wrapped<TickerCoin[]>; a
             {hero.related_asset && <span className="chip">{hero.related_asset}</span>}
           </div>
           <h2 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
-            <Link href={`/news/${hero.slug}`} className="hover:text-primary-glow">{hero.title}</Link>
+            {hero.title}
           </h2>
           <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-dim">{hero.summary}</p>
           <div className="mt-4 flex items-center gap-3 text-[12px] text-ink-dim">
@@ -348,11 +348,12 @@ export function NewsletterBand() {
   );
 }
 
-export function MascotArenaPreview({ arena }: { arena: MascotArenaState | null }) {
+export function MascotArenaPreview({ arena, excludedNewsSlugs = [] }: { arena: MascotArenaState | null; excludedNewsSlugs?: string[] }) {
   const champion = arena?.mascot_of_week ?? arena?.champion;
   const mascot = mascotFor(champion?.symbol ?? "BTC")!;
   const isWeeklyChampion = Boolean(arena?.mascot_of_week);
   const top = arena?.ranking.slice(0, 3) ?? [];
+  const latestNews = champion?.latest_news && !excludedNewsSlugs.includes(champion.latest_news.slug) ? champion.latest_news : null;
   return (
     <section className="card mt-5 overflow-hidden border-amber-400/25">
       <div className="grid items-center md:grid-cols-[220px_1fr]">
@@ -365,7 +366,7 @@ export function MascotArenaPreview({ arena }: { arena: MascotArenaState | null }
           <h2 className="mt-2 font-display text-2xl font-bold text-white">{mascot.title} {isWeeklyChampion ? "wears the crown" : "is leading the Arena"}</h2>
           <p className="mt-2 text-sm text-ink-dim">{isWeeklyChampion ? `${mascot.coin} finished #1 with ${champion?.votes.toLocaleString() ?? 0} votes.` : "Choose one of fifteen original crypto characters and shape this week's ranking."}</p>
           {top.length > 0 && <ol className="mt-4 flex flex-wrap gap-2">{top.map((item) => <li key={item.symbol} className="chip">#{item.position} {item.symbol} · {item.votes.toLocaleString()}</li>)}</ol>}
-          <div className="mt-5 flex flex-wrap gap-3"><Link href="/mascot-arena#contenders" data-analytics-event="mascot_champion_click" className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-glow">Vote Now</Link><Link href="/mascot-arena#ranking" data-analytics-event="mascot_champion_click" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">View Arena</Link>{champion?.latest_news ? <Link href={`/news/${champion.latest_news.slug}`} data-analytics-event="mascot_champion_click" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">Latest News</Link> : <span className="text-xs text-ink-dim">Latest verified coverage coming soon.</span>}</div>
+          <div className="mt-5 flex flex-wrap gap-3"><Link href="/mascot-arena#contenders" data-analytics-event="mascot_champion_click" className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-glow">Vote Now</Link><Link href="/mascot-arena#ranking" data-analytics-event="mascot_champion_click" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">View Arena</Link>{latestNews ? <Link href={`/news/${latestNews.slug}`} data-analytics-event="mascot_champion_click" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">Latest News</Link> : champion?.symbol ? <Link href={`/crypto/${champion.symbol}`} data-analytics-event="mascot_champion_click" className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:text-white">Open {champion.symbol} hub</Link> : <span className="text-xs text-ink-dim">Latest verified coverage coming soon.</span>}</div>
         </div>
       </div>
     </section>
