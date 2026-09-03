@@ -33,6 +33,7 @@ def test_health(client):
     ready = client.get("/health/ready")
     assert ready.status_code == 200
     assert ready.json()["status"] == "ready"
+    assert ready.json()["coordination_dispatch_retry"] is True
 
 
 def test_login_flow_and_role_protection(client):
