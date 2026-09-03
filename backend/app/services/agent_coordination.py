@@ -203,6 +203,29 @@ def handoff(db: Session, *, task_id: int, actor: str, lease_token: str, next_act
     return task
 
 
+def retry_dispatch_failure(db: Session, *, task_id: int, actor: str, lease_token: str, detail: str):
+    """Release a failed provider dispatch without transferring task ownership."""
+    task = require_lease(db, task_id=task_id, actor=actor, lease_token=lease_token)
+    task.attempts += 1
+    task.lease_token_hash = ""
+    task.lease_expires_at = None
+    task.heartbeat_at = None
+    if task.attempts >= task.max_attempts:
+        task.status = "failed"
+        task.blocker_type = "retry_limit"
+        task.blocker_detail = detail
+        record(db, task.id, "system", "failed", detail)
+    else:
+        task.status = "queued"
+        task.current_actor = actor
+        task.blocker_type = ""
+        task.blocker_detail = ""
+        record(db, task.id, "system", "dispatch_retry", detail)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
 def complete(db: Session, *, task_id: int, actor: str, lease_token: str, summary: str):
     task = require_lease(db, task_id=task_id, actor=actor, lease_token=lease_token)
     task.status = "completed"
@@ -241,4 +264,15 @@ def dashboard(db: Session) -> dict:
         .limit(50)
         .all()
     )
-    return {"recovered": recovered, "counts": counts, "tasks": [serialize_task(task) for task in active]}
+    recent = (
+        db.query(AgentCoordinationTask)
+        .order_by(AgentCoordinationTask.updated_at.desc(), AgentCoordinationTask.id.desc())
+        .limit(20)
+        .all()
+    )
+    return {
+        "recovered": recovered,
+        "counts": counts,
+        "tasks": [serialize_task(task, include_instructions=False) for task in active],
+        "recent": [serialize_task(task, include_instructions=False) for task in recent],
+    }
