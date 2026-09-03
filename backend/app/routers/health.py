@@ -39,4 +39,8 @@ async def ready(response: Response, db: Session = Depends(get_db)):
     except Exception:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "not_ready", "database": "error"}
-    return {"status": "ready", "database": "ok"}
+    return {
+        "status": "ready",
+        "database": "ok",
+        "coordination_dispatch_retry": True,
+    }
