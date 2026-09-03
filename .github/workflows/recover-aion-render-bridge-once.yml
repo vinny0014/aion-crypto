@@ -1,8 +1,9 @@
 name: Recover AION Render bridge (one time)
 
 on:
-  push:
-    branches: ["main"]
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
@@ -16,7 +17,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Stop when retry-safe backend is already live
+        id: readiness
+        run: |
+          if curl --fail --silent --show-error --max-time 20             https://aion-crypto-api.onrender.com/health/ready             | jq -e '.status == "ready" and .coordination_dispatch_retry == true' >/dev/null; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Retry-safe Render backend is already live"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Ask Manus to publish the retry-safe backend
+        if: steps.readiness.outputs.ready != 'true'
         env:
           SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
         run: |
