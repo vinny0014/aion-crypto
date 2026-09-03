@@ -1,0 +1,26 @@
+name: Recover AION Render bridge (one time)
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recover-aion-render-bridge-once
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask Manus to publish the retry-safe backend
+        env:
+          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+        run: |
+          test -n "$SCHEDULER_TOKEN"
+          command="AION BRIDGE RECOVERY — ONE TIME. The production branch is codex/aion-crypto-production-review at SHA 9177ce1daa46d5bdd2b4d43ce5567e113fdc4b65. GitHub CI is green, but https://aion-crypto-api.onrender.com/health/ready still lacks coordination_dispatch_retry=true, so Render has not published the retry-safe coordinator. Open Render, deploy the production branch/current SHA, wait for health/ready to return status=ready and coordination_dispatch_retry=true, and record evidence in issue #35. Do not change site content, AdSense, Auto Ads, payment, or cost. Do not request AdSense review in this recovery task. When Render is ready, the already-running Manus command bridge will automatically queue the full validation and conditional AdSense review mission."
+          payload="$(jq -n --arg command "$command" '{command:$command}')"
+          curl --fail-with-body --silent --show-error             --retry 3             --retry-all-errors             --retry-delay 5             --max-time 40             -H "Content-Type: application/json"             -H "X-Scheduler-Token: $SCHEDULER_TOKEN"             --data "$payload"             https://aion-crypto-api.onrender.com/internal/manus/send
