@@ -20,7 +20,26 @@ concurrency:
 jobs:
   send:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
+      - name: Check out bridge instructions
+        uses: actions/checkout@v4
+
+      - name: Wait for retry-safe coordination backend
+        run: |
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent --show-error --max-time 20 \
+              https://aion-crypto-api.onrender.com/health/ready \
+              | jq -e '.status == "ready" and .coordination_dispatch_retry == true' >/dev/null; then
+              echo "Retry-safe coordination backend is live"
+              exit 0
+            fi
+            echo "Waiting for Render deploy ($attempt/90)"
+            sleep 20
+          done
+          echo "Retry-safe coordination backend did not become ready" >&2
+          exit 1
+
       - name: Queue durable Manus mission
         env:
           MANUS_COMMAND: ${{ inputs.command }}
@@ -29,7 +48,7 @@ jobs:
         run: |
           test -n "$SCHEDULER_TOKEN"
           if [ -z "$MANUS_COMMAND" ]; then
-            MANUS_COMMAND="TASK_ID=AION-ADSENSE-CONTENT-VALUE; deploy and validate aioncrypto.cloud after production SHA=$PRODUCTION_SHA; this cycle remediates Google's low-value-content finding; keep Auto Ads OFF and DO NOT request a new AdSense review; verify unique home story placement, at least 20 substantial AION Explained guides, six strong coin pillars, visible primary references/review dates/risks, internal links, Article/Breadcrumb/FAQ structured data, sitemap and indexability, desktop/mobile 360/390/412, HTTP, console, network and performance; verify automated news remains source-bound and weak drafts are held by the quality gate; record evidence in GitHub issues #35 and #38 and return only concrete findings through the coordination callback."
+            MANUS_COMMAND="$(sed "s/{{PRODUCTION_SHA}}/$PRODUCTION_SHA/g" .github/manus/aion-adsense-continuous-loop.md)"
             IDEMPOTENCY_KEY="production:$PRODUCTION_SHA"
             TASK_TITLE="Validate AION production $PRODUCTION_SHA"
           else
@@ -40,7 +59,7 @@ jobs:
             --arg key "$IDEMPOTENCY_KEY" \
             --arg title "$TASK_TITLE" \
             --arg instructions "$MANUS_COMMAND" \
-            '{idempotency_key:$key,title:$title,instructions:$instructions,actor:"manus",max_attempts:6}')"
+            '{idempotency_key:$key,title:$title,instructions:$instructions,actor:"manus",max_attempts:12}')"
           curl --fail-with-body --silent --show-error \
             --max-time 35 \
             -H "Content-Type: application/json" \
@@ -49,7 +68,7 @@ jobs:
             --output /tmp/manus-create.json \
             https://aion-crypto-api.onrender.com/internal/manus/coordination/tasks
           jq -e '.status == "created" or .status == "duplicate"' /tmp/manus-create.json >/dev/null
-          echo "AION Manus mission queued: $IDEMPOTENCY_KEY"
+          jq -r '"AION Manus mission queued: task=\(.task.id) status=\(.task.status) actor=\(.task.current_actor)"' /tmp/manus-create.json
 
       - name: Dispatch queued Manus mission now
         env:
@@ -57,6 +76,9 @@ jobs:
         run: |
           test -n "$SCHEDULER_TOKEN"
           curl --fail-with-body --silent --show-error \
+            --retry 3 \
+            --retry-all-errors \
+            --retry-delay 5 \
             --max-time 40 \
             -X POST \
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
@@ -65,3 +87,21 @@ jobs:
           status="$(jq -r '.status // "unknown"' /tmp/manus-dispatch.json)"
           test "$status" = "dispatched" -o "$status" = "idle"
           echo "AION Manus dispatch: $status"
+
+      - name: Report protected coordination state
+        if: always()
+        env:
+          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+        run: |
+          test -n "$SCHEDULER_TOKEN"
+          curl --fail-with-body --silent --show-error \
+            --retry 2 \
+            --retry-all-errors \
+            --max-time 40 \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --output /tmp/manus-status.json \
+            https://aion-crypto-api.onrender.com/internal/manus/coordination/status
+          {
+            echo "### AION coordination status"
+            jq -r '"Counts: `\(.counts)`", "", "Recent tasks:", (.recent[:5][] | "- #\(.id) `\(.status)` actor=`\(.current_actor)` attempts=\(.attempts)/\(.max_attempts) updated=\(.updated_at)")' /tmp/manus-status.json
+          } >> "$GITHUB_STEP_SUMMARY"

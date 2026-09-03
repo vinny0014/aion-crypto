@@ -2,6 +2,8 @@ name: AION agent coordinator
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
@@ -13,6 +15,7 @@ concurrency:
 jobs:
   tick:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Recover stale work and dispatch the next Manus task
         env:
@@ -20,7 +23,33 @@ jobs:
         run: |
           test -n "$SCHEDULER_TOKEN"
           curl --fail-with-body --silent --show-error \
+            --retry 3 \
+            --retry-all-errors \
+            --retry-delay 5 \
             --max-time 40 \
             -X POST \
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --output /tmp/coordination-tick.json \
             https://aion-crypto-api.onrender.com/internal/manus/coordination/tick
+          jq -e '.status == "dispatched" or .status == "idle"' /tmp/coordination-tick.json >/dev/null
+          jq -r '"AION coordinator: \(.status)"' /tmp/coordination-tick.json
+
+      - name: Publish safe heartbeat summary
+        if: always()
+        env:
+          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
+        run: |
+          test -n "$SCHEDULER_TOKEN"
+          curl --fail-with-body --silent --show-error \
+            --retry 2 \
+            --retry-all-errors \
+            --max-time 40 \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --output /tmp/coordination-status.json \
+            https://aion-crypto-api.onrender.com/internal/manus/coordination/status
+          {
+            echo "### AION bridge heartbeat"
+            echo ""
+            echo "- Checked: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            jq -r '"- Counts: `\(.counts)`", "- Active:", (.tasks[:10][]? | "  - #\(.id) `\(.status)` actor=`\(.current_actor)` attempts=\(.attempts)/\(.max_attempts) heartbeat=\(.heartbeat_at // \"none\")")' /tmp/coordination-status.json
+          } >> "$GITHUB_STEP_SUMMARY"

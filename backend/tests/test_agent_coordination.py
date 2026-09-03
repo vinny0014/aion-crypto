@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 
@@ -169,3 +170,50 @@ def test_watchdog_dispatches_one_manus_task(client, monkeypatch):
     status = client.get("/internal/manus/coordination/status", headers=auth()).json()
     assert status["tasks"][0]["status"] == "running"
     assert status["tasks"][0]["current_actor"] == "manus"
+    assert "instructions" not in status["tasks"][0]
+
+
+def test_watchdog_requeues_transient_manus_failure(client, monkeypatch):
+    task_id = create_task(client, key="task:transient").json()["task"]["id"]
+    import app.routers.manus as manus_router
+
+    calls = 0
+
+    async def flaky_send(_text):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise HTTPException(status_code=502, detail="Manus API is temporarily unreachable")
+        return {"ok": True, "task_id": "agent-default-main_task", "request_id": "req-retry"}
+
+    monkeypatch.setattr(manus_router, "_send_manus_message", flaky_send)
+    first = client.post("/internal/manus/coordination/tick", headers=auth())
+    assert first.status_code == 502
+
+    status = client.get("/internal/manus/coordination/status", headers=auth()).json()
+    task = next(item for item in status["tasks"] if item["id"] == task_id)
+    assert task["status"] == "queued"
+    assert task["current_actor"] == "manus"
+    assert task["attempts"] == 1
+    assert "instructions" not in task
+
+    second = client.post("/internal/manus/coordination/tick", headers=auth())
+    assert second.status_code == 200
+    assert second.json()["status"] == "dispatched"
+    assert second.json()["coordination_task_id"] == task_id
+
+
+def test_dashboard_keeps_completed_tasks_observable_without_instructions(client):
+    task_id = create_task(client, key="task:recent").json()["task"]["id"]
+    claimed = claim(client).json()
+    response = client.post(
+        f"/internal/manus/coordination/{task_id}/complete",
+        json={"actor": "manus", "lease_token": claimed["lease_token"], "summary": "validated"},
+    )
+    assert response.status_code == 200
+
+    status = client.get("/internal/manus/coordination/status", headers=auth()).json()
+    recent = next(item for item in status["recent"] if item["id"] == task_id)
+    assert recent["status"] == "completed"
+    assert recent["result_summary"] == "validated"
+    assert "instructions" not in recent
