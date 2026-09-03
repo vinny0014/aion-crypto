@@ -273,14 +273,13 @@ RULES:
 """
     try:
         result = await _send_manus_message(command)
-    except HTTPException:
-        coordination.handoff(
+    except HTTPException as exc:
+        coordination.retry_dispatch_failure(
             db,
             task_id=task.id,
             actor="manus",
             lease_token=lease_token,
-            next_actor="codex",
-            detail="Manus dispatch failed; Codex must inspect provider availability",
+            detail=f"Manus dispatch failed; retry scheduled: {exc.detail}",
         )
         raise
     return {
