@@ -1,15 +1,13 @@
-name: Recover AION Render bridge (one time)
+name: Recover AION Render bridge (manual)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
 
 concurrency:
-  group: recover-aion-render-bridge-once
+  group: recover-aion-render-bridge
   cancel-in-progress: false
 
 jobs:
@@ -20,7 +18,9 @@ jobs:
       - name: Stop when retry-safe backend is already live
         id: readiness
         run: |
-          if curl --fail --silent --show-error --max-time 20             https://aion-crypto-api.onrender.com/health/ready             | jq -e '.status == "ready" and .coordination_dispatch_retry == true' >/dev/null; then
+          if curl --fail --silent --show-error --max-time 20 \
+            https://aion-crypto-api.onrender.com/health/ready \
+            | jq -e '.status == "ready" and .coordination_dispatch_retry == true' >/dev/null; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
             echo "Retry-safe Render backend is already live"
           else
@@ -33,6 +33,13 @@ jobs:
           SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
         run: |
           test -n "$SCHEDULER_TOKEN"
-          command="AION BRIDGE RECOVERY — ONE TIME. The production branch is codex/aion-crypto-production-review at SHA 9177ce1daa46d5bdd2b4d43ce5567e113fdc4b65. GitHub CI is green, but https://aion-crypto-api.onrender.com/health/ready still lacks coordination_dispatch_retry=true, so Render has not published the retry-safe coordinator. Open Render, deploy the production branch/current SHA, wait for health/ready to return status=ready and coordination_dispatch_retry=true, and record evidence in issue #35. Do not change site content, AdSense, Auto Ads, payment, or cost. Do not request AdSense review in this recovery task. When Render is ready, the already-running Manus command bridge will automatically queue the full validation and conditional AdSense review mission."
+          command="AION BRIDGE RECOVERY — MANUAL. First verify that Render has a valid MANUS_API_KEY. Then deploy the current codex/aion-crypto-production-review branch for the aion-crypto-api service, wait for /health/ready to return status=ready and coordination_dispatch_retry=true, and record evidence in issues #35 and #38. Do not change content, AdSense, Auto Ads, payments, or cost. Do not request AdSense review in this recovery task."
           payload="$(jq -n --arg command "$command" '{command:$command}')"
-          curl --fail-with-body --silent --show-error             --retry 3             --retry-all-errors             --retry-delay 5             --max-time 40             -H "Content-Type: application/json"             -H "X-Scheduler-Token: $SCHEDULER_TOKEN"             --data "$payload"             https://aion-crypto-api.onrender.com/internal/manus/send
+          # No automatic retries: an authentication failure must not create
+          # repeated Manus calls or consume credits.
+          curl --fail-with-body --silent --show-error \
+            --max-time 40 \
+            -H "Content-Type: application/json" \
+            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
+            --data "$payload" \
+            https://aion-crypto-api.onrender.com/internal/manus/send
