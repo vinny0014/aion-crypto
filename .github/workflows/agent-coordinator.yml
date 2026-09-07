@@ -3,7 +3,7 @@ name: AION agent coordinator
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: read
@@ -22,16 +22,15 @@ jobs:
           SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
         run: |
           test -n "$SCHEDULER_TOKEN"
+          # This POST is intentionally not retried. A failed dispatch is recovered
+          # by the next scheduled tick so one run cannot consume multiple attempts.
           curl --fail-with-body --silent --show-error \
-            --retry 3 \
-            --retry-all-errors \
-            --retry-delay 5 \
             --max-time 40 \
             -X POST \
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
             --output /tmp/coordination-tick.json \
             https://aion-crypto-api.onrender.com/internal/manus/coordination/tick
-          jq -e '.status == "dispatched" or .status == "idle"' /tmp/coordination-tick.json >/dev/null
+          jq -e '.status == "dispatched" or .status == "idle" or .status == "requeued"' /tmp/coordination-tick.json >/dev/null
           jq -r '"AION coordinator: \(.status)"' /tmp/coordination-tick.json
 
       - name: Publish safe heartbeat summary
@@ -51,5 +50,8 @@ jobs:
             echo "### AION bridge heartbeat"
             echo ""
             echo "- Checked: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            jq -r '"- Counts: `\(.counts)`", "- Active:", (.tasks[:10][]? | "  - #\(.id) `\(.status)` actor=`\(.current_actor)` attempts=\(.attempts)/\(.max_attempts) heartbeat=\(.heartbeat_at // \"none\")")' /tmp/coordination-status.json
+            counts="$(jq -c '.counts // {}' /tmp/coordination-status.json)"
+            echo "- Counts: \`$counts\`"
+            echo "- Active:"
+            jq -r '.tasks[:10][]? | "  - #\(.id) status=\(.status) actor=\(.current_actor) attempts=\(.attempts)/\(.max_attempts) heartbeat=\(.heartbeat_at // "none")"' /tmp/coordination-status.json
           } >> "$GITHUB_STEP_SUMMARY"
