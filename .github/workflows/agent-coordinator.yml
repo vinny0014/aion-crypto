@@ -30,8 +30,9 @@ jobs:
             --retry-delay 5 \
             --connect-timeout 10 \
             --max-time 25 \
-            https://aion-crypto-api.onrender.com/health/ready \
-            | jq -e '.status == "ready"' >/dev/null
+            --output /tmp/render-ready.json \
+            https://aion-crypto-api.onrender.com/health/ready
+          jq -e '.status == "ready"' /tmp/render-ready.json >/dev/null
           # This POST is intentionally not retried. A failed dispatch is recovered
           # by the next scheduled tick so one run cannot consume multiple attempts.
           curl --fail-with-body --silent --show-error \
