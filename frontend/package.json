@@ -5,11 +5,12 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/prepare-standalone.mjs",
+    "build": "node scripts/write-build-info.mjs && next build && node scripts/prepare-standalone.mjs",
     "start": "node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "e2e": "node scripts/run-e2e.mjs"
+    "e2e": "node scripts/run-e2e.mjs",
+    "e2e:production": "node scripts/run-e2e.mjs --config=playwright.production.config.ts production-adsense-preflight.spec.ts"
   },
   "keywords": [],
   "author": "",
