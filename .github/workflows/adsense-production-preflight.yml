@@ -1,0 +1,111 @@
+name: AION AdSense production preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Expected production SHA. Leave blank to use the workflow commit SHA.
+        required: false
+        type: string
+  push:
+    branches:
+      - codex/aion-crypto-production-review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adsense-production-preflight
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      AION_PRODUCTION_URL: https://aioncrypto.cloud
+      AION_BACKEND_URL: https://aion-crypto-api.onrender.com
+      AION_REQUIRE_ADSENSE_SCRIPT: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve expected SHA
+        id: release
+        shell: bash
+        working-directory: .
+        env:
+          INPUT_SHA: ${{ inputs.expected_sha }}
+        run: |
+          if [ -n "$INPUT_SHA" ]; then
+            expected="$(printf '%s' "$INPUT_SHA" | tr '[:upper:]' '[:lower:]')"
+          else
+            expected="${GITHUB_SHA,,}"
+          fi
+          if ! [[ "$expected" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "Invalid expected SHA: $expected" >&2
+            exit 1
+          fi
+          echo "expected_sha=$expected" >> "$GITHUB_OUTPUT"
+          echo "AION_EXPECTED_SHA=$expected" >> "$GITHUB_ENV"
+
+      - name: Wait for Hostinger frontend to serve expected release
+        shell: bash
+        working-directory: .
+        run: |
+          for attempt in $(seq 1 30); do
+            body="$(curl -fsS --max-time 20 -H 'Cache-Control: no-cache' "https://aioncrypto.cloud/build-info.json?preflight=${GITHUB_RUN_ID}-${attempt}" || true)"
+            served="$(printf '%s' "$body" | jq -r '.sha // empty' 2>/dev/null || true)"
+            echo "frontend attempt=$attempt served_sha=${served:-unavailable} expected=$AION_EXPECTED_SHA"
+            if [ "$served" = "$AION_EXPECTED_SHA" ]; then
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Hostinger did not publish expected SHA within the deployment window." >&2
+          exit 1
+
+      - name: Wait for Render backend to serve expected release and readiness marker
+        shell: bash
+        working-directory: .
+        run: |
+          for attempt in $(seq 1 30); do
+            body="$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "https://aion-crypto-api.onrender.com/health/ready?preflight=${GITHUB_RUN_ID}-${attempt}" || true)"
+            served="$(printf '%s' "$body" | jq -r '.release_sha // empty' 2>/dev/null || true)"
+            ready="$(printf '%s' "$body" | jq -r '.status // empty' 2>/dev/null || true)"
+            marker="$(printf '%s' "$body" | jq -r '.coordination_dispatch_retry // false' 2>/dev/null || true)"
+            echo "backend attempt=$attempt status=${ready:-unavailable} marker=$marker served_sha=${served:-unavailable} expected=$AION_EXPECTED_SHA"
+            if [ "$ready" = "ready" ] && [ "$marker" = "true" ] && [ "$served" = "$AION_EXPECTED_SHA" ]; then
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Render did not publish the expected SHA/readiness marker within the deployment window." >&2
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Install production preflight browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run production AdSense preflight
+        run: npm run e2e:production
+
+      - name: Upload production preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adsense-production-preflight-${{ github.run_id }}
+          path: |
+            frontend/test-results/
+            frontend/playwright-report-production/
+          if-no-files-found: ignore
+          retention-days: 14
