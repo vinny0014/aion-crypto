@@ -49,8 +49,43 @@ jobs:
           path: guardian-report.json
           retention-days: 14
 
-      - name: Record incident in control plane
+      - name: Classify runner-wide transport outage
         if: steps.guardian.outputs.exit_code != '0'
+        id: transport
+        shell: bash
+        run: |
+          critical_transport_only=$(jq -r '
+            [.checks[] | select(.ok == false and .severity == "critical")] as $failures
+            | ($failures | length) > 0
+              and all($failures[];
+                (.detail | test("Network is unreachable|Temporary failure in name resolution|Name or service not known|Could not resolve host"; "i"))
+              )
+          ' guardian-report.json)
+
+          github_reachable=false
+          cloudflare_reachable=false
+          if curl --silent --show-error --max-time 10 --output /dev/null https://api.github.com/; then
+            github_reachable=true
+          fi
+          if curl --silent --show-error --max-time 10 --output /dev/null https://www.cloudflare.com/cdn-cgi/trace; then
+            cloudflare_reachable=true
+          fi
+
+          transport_only=false
+          if [ "$critical_transport_only" = "true" ] &&
+             [ "$github_reachable" != "true" ] &&
+             [ "$cloudflare_reachable" != "true" ]; then
+            transport_only=true
+          fi
+
+          echo "transport_only=$transport_only" >> "$GITHUB_OUTPUT"
+          echo "Independent connectivity probes: github=$github_reachable cloudflare=$cloudflare_reachable" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$transport_only" = "true" ]; then
+            echo "Runner-wide egress/DNS outage detected; skipping production remediation to avoid a false redeploy." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Record incident in control plane
+        if: steps.guardian.outputs.exit_code != '0' && steps.transport.outputs.transport_only != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -75,7 +110,7 @@ jobs:
           gh issue comment 35 --repo "${{ github.repository }}" --body-file guardian-comment.md
 
       - name: Safe source repair for ads.txt
-        if: steps.guardian.outputs.exit_code != '0'
+        if: steps.guardian.outputs.exit_code != '0' && steps.transport.outputs.transport_only != 'true'
         id: ads_repair
         shell: bash
         run: |
@@ -106,7 +141,7 @@ jobs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Safe redeploy trigger with cooldown
-        if: steps.guardian.outputs.exit_code != '0' && steps.ads_repair.outputs.changed != 'true'
+        if: steps.guardian.outputs.exit_code != '0' && steps.transport.outputs.transport_only != 'true' && steps.ads_repair.outputs.changed != 'true'
         id: redeploy
         shell: bash
         run: |
@@ -129,7 +164,7 @@ jobs:
           echo "Safe production redeploy trigger pushed to $prod_branch." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail run when production remains unhealthy
-        if: steps.guardian.outputs.exit_code != '0'
+        if: steps.guardian.outputs.exit_code != '0' && steps.transport.outputs.transport_only != 'true'
         run: |
           echo "Production guard detected a critical failure. A safe remediation was attempted when eligible."
           exit 1
