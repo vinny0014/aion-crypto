@@ -161,33 +161,46 @@ def main() -> int:
         missing = [path for path in PILLARS if f"{SITE}{path}" not in sitemap.text]
         add("sitemap", sitemap.status == 200 and not missing, f"HTTP {sitemap.status}; missing_pillars={missing}")
 
-    ready = safe_fetch("backend_ready", f"{BACKEND}/health/ready")
-    if ready is not None:
-        payload: dict[str, Any] = {}
+    ready: Response | None = None
+    payload: dict[str, Any] | None = None
+    readiness_error = ""
+    for attempt in range(3):
         try:
-            payload = ready.json()
+            candidate = fetch(f"{BACKEND}/health/ready")
+            parsed = candidate.json()
+            if not isinstance(parsed, dict):
+                raise ValueError(f"expected JSON object, got {type(parsed).__name__}")
+            ready = candidate
+            payload = parsed
+            break
         except Exception as exc:
-            add("backend_ready_json", False, f"invalid JSON: {exc}")
-        else:
-            add(
-                "backend_ready",
-                ready.status == 200 and payload.get("status") == "ready" and payload.get("database") == "ok",
-                f"HTTP {ready.status}; status={payload.get('status')}; database={payload.get('database')}",
-                elapsed_ms=ready.elapsed_ms,
-            )
-            add(
-                "coordination_dispatch_retry",
-                payload.get("coordination_dispatch_retry") is True,
-                f"coordination_dispatch_retry={payload.get('coordination_dispatch_retry')!r}",
-            )
-            release = payload.get("release_sha")
-            release_ok = isinstance(release, str) and bool(re.fullmatch(r"[0-9a-f]{7,40}", release.lower()))
-            add(
-                "backend_release_fingerprint",
-                release_ok,
-                f"release_sha={release!r}; source={payload.get('release_source')!r}",
-                severity="warning",
-            )
+            prefix = "request failed" if not isinstance(exc, (json.JSONDecodeError, ValueError)) else "invalid JSON"
+            readiness_error = f"{prefix}: {type(exc).__name__}: {exc}"
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+
+    if ready is None or payload is None:
+        add("backend_ready_json", False, f"{readiness_error}; attempts=3")
+    else:
+        add(
+            "backend_ready",
+            ready.status == 200 and payload.get("status") == "ready" and payload.get("database") == "ok",
+            f"HTTP {ready.status}; status={payload.get('status')}; database={payload.get('database')}",
+            elapsed_ms=ready.elapsed_ms,
+        )
+        add(
+            "coordination_dispatch_retry",
+            payload.get("coordination_dispatch_retry") is True,
+            f"coordination_dispatch_retry={payload.get('coordination_dispatch_retry')!r}",
+        )
+        release = payload.get("release_sha")
+        release_ok = isinstance(release, str) and bool(re.fullmatch(r"[0-9a-f]{7,40}", release.lower()))
+        add(
+            "backend_release_fingerprint",
+            release_ok,
+            f"release_sha={release!r}; source={payload.get('release_source')!r}",
+            severity="warning",
+        )
 
     build_info = safe_fetch("frontend_build_info", f"{SITE}/build-info.json")
     if build_info is not None:
