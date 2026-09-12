@@ -54,14 +54,32 @@ jobs:
         id: transport
         shell: bash
         run: |
-          transport_only=$(jq -r '
+          critical_transport_only=$(jq -r '
             [.checks[] | select(.ok == false and .severity == "critical")] as $failures
             | ($failures | length) > 0
               and all($failures[];
                 (.detail | test("Network is unreachable|Temporary failure in name resolution|Name or service not known|Could not resolve host"; "i"))
               )
           ' guardian-report.json)
+
+          github_reachable=false
+          cloudflare_reachable=false
+          if curl --silent --show-error --max-time 10 --output /dev/null https://api.github.com/; then
+            github_reachable=true
+          fi
+          if curl --silent --show-error --max-time 10 --output /dev/null https://www.cloudflare.com/cdn-cgi/trace; then
+            cloudflare_reachable=true
+          fi
+
+          transport_only=false
+          if [ "$critical_transport_only" = "true" ] &&
+             [ "$github_reachable" != "true" ] &&
+             [ "$cloudflare_reachable" != "true" ]; then
+            transport_only=true
+          fi
+
           echo "transport_only=$transport_only" >> "$GITHUB_OUTPUT"
+          echo "Independent connectivity probes: github=$github_reachable cloudflare=$cloudflare_reachable" >> "$GITHUB_STEP_SUMMARY"
           if [ "$transport_only" = "true" ]; then
             echo "Runner-wide egress/DNS outage detected; skipping production remediation to avoid a false redeploy." >> "$GITHUB_STEP_SUMMARY"
           fi
