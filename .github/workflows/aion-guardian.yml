@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
   issues: write
 
@@ -162,6 +163,20 @@ jobs:
           git push origin HEAD:"$prod_branch"
           echo "triggered=true" >> "$GITHUB_OUTPUT"
           echo "Safe production redeploy trigger pushed to $prod_branch." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dispatch production preflight after remediation
+        if: steps.ads_repair.outputs.changed == 'true' || steps.redeploy.outputs.triggered == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          prod_branch="codex/aion-crypto-production-review"
+          git fetch origin "$prod_branch"
+          expected_sha=$(git rev-parse "origin/$prod_branch")
+          gh workflow run adsense-production-preflight.yml \
+            --ref "$prod_branch" \
+            -f expected_sha="$expected_sha"
+          echo "Production preflight dispatched for $expected_sha." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail run when production remains unhealthy
         if: steps.guardian.outputs.exit_code != '0' && steps.transport.outputs.transport_only != 'true'
