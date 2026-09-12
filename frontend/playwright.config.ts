@@ -30,6 +30,9 @@ const launchOptions = sparticuzExecutable
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Production-only checks hit the public site and require production release
+  // fingerprints / AdSense settings. Run them only through e2e:production.
+  testIgnore: ["**/production-adsense-preflight.spec.ts"],
   timeout: 180_000,
   fullyParallel: false,
   workers: 1, // serial: the suite shares one Next.js server and one origin
