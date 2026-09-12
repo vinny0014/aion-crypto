@@ -1,0 +1,135 @@
+name: AION Guardian 24x7
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: aion-guardian-24x7
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run lightweight production guard
+        id: guardian
+        shell: bash
+        run: |
+          set +e
+          python scripts/aion_guardian.py --json guardian-report.json
+          code=$?
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ]; then
+            echo "AION production guard: PASS" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "AION production guard: FAIL" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload guardian evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aion-guardian-report
+          path: guardian-report.json
+          retention-days: 14
+
+      - name: Record incident in control plane
+        if: steps.guardian.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          failures=$(jq -r '.checks[] | select(.ok == false and .severity == "critical") | "- `" + .name + "`: " + .detail' guardian-report.json)
+          warnings=$(jq -r '.checks[] | select(.ok == false and .severity == "warning") | "- `" + .name + "`: " + .detail' guardian-report.json)
+          cat > guardian-comment.md <<EOF
+          ## AION Guardian — incidente automático
+
+          **STATE:** \`RETURNED_TO_WORK\`
+          **Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          **Generated:** $(jq -r '.generated_at' guardian-report.json)
+
+          ### Falhas críticas
+          ${failures:-Nenhuma}
+
+          ### Avisos
+          ${warnings:-Nenhum}
+
+          O Guardian tentará apenas autorrecuperação segura de deploy. Não altera DNS, pagamentos, AdSense, Auto Ads ou credenciais.
+          EOF
+          gh issue comment 35 --repo "${{ github.repository }}" --body-file guardian-comment.md
+
+      - name: Safe source repair for ads.txt
+        if: steps.guardian.outputs.exit_code != '0'
+        id: ads_repair
+        shell: bash
+        run: |
+          if ! jq -e '.checks[] | select(.name == "ads_txt" and .ok == false and .severity == "critical")' guardian-report.json >/dev/null; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          prod_branch="codex/aion-crypto-production-review"
+          git fetch origin "$prod_branch"
+          git switch -C guardian-production "origin/$prod_branch"
+          expected='google.com, pub-3354845222558845, DIRECT, f08c47fec0942fa0'
+          current=""
+          if [ -f frontend/public/ads.txt ]; then
+            current=$(tr -d '\r\n' < frontend/public/ads.txt)
+          fi
+          if [ "$current" = "$expected" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name "AION Guardian"
+          git config user.email "84551509+vinny0014@users.noreply.github.com"
+          printf '%s\n' "$expected" > frontend/public/ads.txt
+          git add frontend/public/ads.txt
+          git commit -m "guardian: restore AdSense ads.txt"
+          git push origin HEAD:"$prod_branch"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Safe redeploy trigger with cooldown
+        if: steps.guardian.outputs.exit_code != '0' && steps.ads_repair.outputs.changed != 'true'
+        id: redeploy
+        shell: bash
+        run: |
+          prod_branch="codex/aion-crypto-production-review"
+          git fetch origin "$prod_branch"
+          last=$(git log "origin/$prod_branch" --grep='^guardian: redeploy production$' -1 --format='%ct' || true)
+          now=$(date +%s)
+          if [ -n "$last" ] && [ $((now-last)) -lt 21600 ]; then
+            echo "triggered=false" >> "$GITHUB_OUTPUT"
+            echo "Guardian redeploy cooldown active; no duplicate push." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git switch -C guardian-production "origin/$prod_branch"
+          git config user.name "AION Guardian"
+          git config user.email "84551509+vinny0014@users.noreply.github.com"
+          git commit --allow-empty -m "guardian: redeploy production"
+          git push origin HEAD:"$prod_branch"
+          echo "triggered=true" >> "$GITHUB_OUTPUT"
+          echo "Safe production redeploy trigger pushed to $prod_branch." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail run when production remains unhealthy
+        if: steps.guardian.outputs.exit_code != '0'
+        run: |
+          echo "Production guard detected a critical failure. A safe remediation was attempted when eligible."
+          exit 1
