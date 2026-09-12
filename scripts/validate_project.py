@@ -32,7 +32,7 @@ def main() -> None:
         f'export const PRODUCTION_URL = "{OFFICIAL_URL}";': site,
         "REPOSITORY=vinny0014/aion-crypto": env,
         "export const INDEXING_ENABLED = SITE_URL === PRODUCTION_URL;": site,
-        '"next": "15.5.21"': package,
+        '"next": "15.5.25"': package,
     }
     for needle, body in required.items():
         if needle not in body:
