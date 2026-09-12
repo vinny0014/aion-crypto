@@ -5,11 +5,12 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/prepare-standalone.mjs",
+    "build": "node scripts/write-build-info.mjs && next build && node scripts/prepare-standalone.mjs",
     "start": "node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "e2e": "node scripts/run-e2e.mjs"
+    "e2e": "node scripts/run-e2e.mjs",
+    "e2e:production": "node scripts/run-e2e.mjs --config=playwright.production.config.ts production-adsense-preflight.spec.ts"
   },
   "keywords": [],
   "author": "",
@@ -23,9 +24,9 @@
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.4.20",
     "eslint": "9.39.2",
-    "eslint-config-next": "15.5.21",
-    "next": "15.5.21",
-    "postcss": "8.5.21",
+    "eslint-config-next": "15.5.25",
+    "next": "15.5.25",
+    "postcss": "8.5.23",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwindcss": "^3.4.17",
@@ -39,7 +40,8 @@
   "private": true,
   "overrides": {
     "nanoid": "3.3.18",
-    "postcss": "8.5.21",
-    "sharp": "0.35.3"
+    "postcss": "8.5.23",
+    "js-yaml": "4.3.2",
+    "sharp": "0.35.4"
   }
 }
