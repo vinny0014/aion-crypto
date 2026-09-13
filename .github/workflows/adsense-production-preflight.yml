@@ -56,7 +56,7 @@ jobs:
         working-directory: .
         run: |
           for attempt in $(seq 1 30); do
-            body="$(curl -fsS --max-time 20 -H 'Cache-Control: no-cache' "https://aioncrypto.cloud/build-info.json?preflight=${GITHUB_RUN_ID}-${attempt}" || true)"
+            body="$(curl -fsS --max-time 20 -A 'AION-Production-Preflight/1.0 (+https://aioncrypto.cloud)' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "https://aioncrypto.cloud/build-info.json?preflight=${GITHUB_RUN_ID}-${attempt}" || true)"
             served="$(printf '%s' "$body" | jq -r '.sha // empty' 2>/dev/null || true)"
             echo "frontend attempt=$attempt served_sha=${served:-unavailable} expected=$AION_EXPECTED_SHA"
             if [ "$served" = "$AION_EXPECTED_SHA" ]; then
@@ -72,7 +72,7 @@ jobs:
         working-directory: .
         run: |
           for attempt in $(seq 1 30); do
-            body="$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "https://aion-crypto-api.onrender.com/health/ready?preflight=${GITHUB_RUN_ID}-${attempt}" || true)"
+            body="$(curl -fsS --max-time 30 -A 'AION-Production-Preflight/1.0 (+https://aioncrypto.cloud)' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "https://aion-crypto-api.onrender.com/health/ready?preflight=${GITHUB_RUN_ID}-${attempt}" || true)"
             served="$(printf '%s' "$body" | jq -r '.release_sha // empty' 2>/dev/null || true)"
             ready="$(printf '%s' "$body" | jq -r '.status // empty' 2>/dev/null || true)"
             marker="$(printf '%s' "$body" | jq -r '.coordination_dispatch_retry // false' 2>/dev/null || true)"
