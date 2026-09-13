@@ -2,8 +2,6 @@ name: AION agent coordinator
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
@@ -23,9 +21,6 @@ jobs:
         run: |
           test -n "$SCHEDULER_TOKEN"
           curl --fail-with-body --silent --show-error \
-            --retry 3 \
-            --retry-all-errors \
-            --retry-delay 5 \
             --max-time 40 \
             -X POST \
             -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
