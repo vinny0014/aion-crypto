@@ -3,6 +3,10 @@ name: Manus command bridge
 on:
   push:
     branches: ["codex/aion-crypto-production-review"]
+    paths-ignore:
+      - "frontend/tests/**"
+      - ".github/workflows/adsense-production-preflight.yml"
+      - ".github/workflows/manus-command.yml"
   workflow_dispatch:
     inputs:
       command:
