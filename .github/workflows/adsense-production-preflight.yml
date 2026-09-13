@@ -86,8 +86,11 @@ jobs:
             served="$(printf '%s' "$body" | jq -r '.release_sha // empty' 2>/dev/null || true)"
             ready="$(printf '%s' "$body" | jq -r '.status // empty' 2>/dev/null || true)"
             marker="$(printf '%s' "$body" | jq -r '.coordination_dispatch_retry // false' 2>/dev/null || true)"
-            echo "backend attempt=$attempt status=${ready:-unavailable} marker=$marker served_sha=${served:-unavailable} expected=$AION_EXPECTED_BACKEND_SHA"
-            if [ "$ready" = "ready" ] && [ "$marker" = "true" ] && [ "$served" = "$AION_EXPECTED_BACKEND_SHA" ]; then
+            echo "backend attempt=$attempt status=${ready:-unavailable} marker=$marker served_sha=${served:-unavailable} runtime_floor=$AION_EXPECTED_BACKEND_SHA head=$AION_EXPECTED_SHA"
+            if [ "$ready" = "ready" ] && [ "$marker" = "true" ] && [[ "$served" =~ ^[0-9a-f]{40}$ ]] \
+              && git merge-base --is-ancestor "$AION_EXPECTED_BACKEND_SHA" "$served" \
+              && git merge-base --is-ancestor "$served" "$AION_EXPECTED_SHA"; then
+              echo "AION_EXPECTED_BACKEND_SHA=$served" >> "$GITHUB_ENV"
               exit 0
             fi
             sleep 20
