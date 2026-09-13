@@ -66,7 +66,12 @@ jobs:
         working-directory: .
         run: |
           for attempt in $(seq 1 30); do
-            body="$(curl -fsS --max-time 20 -A 'AION-Production-Preflight/1.0 (+https://aioncrypto.cloud)' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "https://aioncrypto.cloud/build-info.json?preflight=${GITHUB_RUN_ID}-${attempt}" || true)"
+            body="$(curl -fsS --max-time 20 \
+              -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36' \
+              -H 'Accept: application/json,text/plain,*/*' \
+              -H 'Cache-Control: no-cache' \
+              -H 'Referer: https://aioncrypto.cloud/' \
+              https://aioncrypto.cloud/build-info.json || true)"
             served="$(printf '%s' "$body" | jq -r '.sha // empty' 2>/dev/null || true)"
             echo "frontend attempt=$attempt served_sha=${served:-unavailable} expected=$AION_EXPECTED_SHA"
             if [ "$served" = "$AION_EXPECTED_SHA" ]; then
