@@ -44,22 +44,35 @@ test("release fingerprints and AdSense public prerequisites are live", async ({ 
 
 test("home and six pillars render cleanly on desktop and mobile", async ({ page }) => {
   const errors: string[] = [];
+  const failedResponses: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("response", (response) => {
+    const url = response.url();
+    if (
+      response.status() >= 400 &&
+      (url.startsWith("https://aioncrypto.cloud/") || url.startsWith(`${BACKEND_URL}/`))
+    ) {
+      failedResponses.push(`${response.status()} ${url}`);
+    }
   });
 
   for (const [width, height] of [[1440, 1000], [390, 844]] as const) {
     await page.setViewportSize({ width, height });
     errors.length = 0;
+    failedResponses.length = 0;
     const home = await page.goto("/", { waitUntil: "domcontentloaded" });
     expect(home?.status()).toBe(200);
     await expect(page.getByRole("heading", { level: 1, name: "AION Crypto Market Intelligence" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     expect(errors, `home ${width}px`).toEqual([]);
+    expect(failedResponses, `home network ${width}px`).toEqual([]);
 
     for (const [slug, title] of pillars) {
       errors.length = 0;
+      failedResponses.length = 0;
       const response = await page.goto(`/explained/${slug}`, { waitUntil: "domcontentloaded" });
       expect(response?.status(), slug).toBe(200);
       await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
@@ -68,6 +81,7 @@ test("home and six pillars render cleanly on desktop and mobile", async ({ page 
       await expect(page.getByRole("heading", { level: 2, name: "Frequently asked questions" })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth), `${slug} ${width}px`).toBeLessThanOrEqual(width);
       expect(errors, `${slug} ${width}px`).toEqual([]);
+      expect(failedResponses, `${slug} network ${width}px`).toEqual([]);
     }
   }
 
@@ -105,9 +119,12 @@ test("Consent Mode blocks Google before choice and enables loaders only after co
   }
 });
 
-test("representative production pages keep CLS below 0.1", async ({ page }) => {
+test("representative production pages keep CLS below 0.1 and LCP at or below 2.5s", async ({ page }) => {
   await page.addInitScript(() => {
-    (window as typeof window & { __aionCls?: number }).__aionCls = 0;
+    const metrics = window as typeof window & { __aionCls?: number; __aionLcp?: number };
+    metrics.__aionCls = 0;
+    metrics.__aionLcp = 0;
+
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         const shift = entry as PerformanceEntry & { hadRecentInput?: boolean; value: number };
@@ -117,12 +134,24 @@ test("representative production pages keep CLS below 0.1", async ({ page }) => {
         }
       }
     }).observe({ type: "layout-shift", buffered: true });
+
+    new PerformanceObserver((list) => {
+      const w = window as typeof window & { __aionLcp?: number };
+      for (const entry of list.getEntries()) {
+        w.__aionLcp = Math.max(w.__aionLcp ?? 0, entry.startTime);
+      }
+    }).observe({ type: "largest-contentful-paint", buffered: true });
   });
 
   for (const route of ["/", "/explained/bitcoin", "/explained/solana", "/mascot-arena"]) {
-    await page.goto(route, { waitUntil: "domcontentloaded" });
+    await page.goto(route, { waitUntil: "networkidle" });
     await page.waitForTimeout(1200);
-    const cls = await page.evaluate(() => (window as typeof window & { __aionCls?: number }).__aionCls ?? 0);
-    expect(cls, `${route} CLS=${cls}`).toBeLessThan(0.1);
+    const metrics = await page.evaluate(() => {
+      const w = window as typeof window & { __aionCls?: number; __aionLcp?: number };
+      return { cls: w.__aionCls ?? 0, lcp: w.__aionLcp ?? 0 };
+    });
+    expect(metrics.cls, `${route} CLS=${metrics.cls}`).toBeLessThan(0.1);
+    expect(metrics.lcp, `${route} LCP was not observed`).toBeGreaterThan(0);
+    expect(metrics.lcp, `${route} LCP=${metrics.lcp}ms`).toBeLessThanOrEqual(2500);
   }
 });
