@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const EXPECTED_SHA = (process.env.AION_EXPECTED_SHA ?? "").trim().toLowerCase();
+const EXPECTED_BACKEND_SHA = (process.env.AION_EXPECTED_BACKEND_SHA ?? EXPECTED_SHA).trim().toLowerCase();
 const BACKEND_URL = (process.env.AION_BACKEND_URL ?? "https://aion-crypto-api.onrender.com").replace(/\/$/, "");
 const REQUIRE_ADSENSE_SCRIPT = process.env.AION_REQUIRE_ADSENSE_SCRIPT !== "false";
 
@@ -25,7 +26,7 @@ test("release fingerprints and AdSense public prerequisites are live", async ({ 
   expect(readyResponse.status()).toBe(200);
   const ready = await readyResponse.json();
   expect(ready).toMatchObject({ status: "ready", database: "ok", coordination_dispatch_retry: true });
-  if (EXPECTED_SHA) expect(ready.release_sha).toBe(EXPECTED_SHA);
+  if (EXPECTED_BACKEND_SHA) expect(ready.release_sha).toBe(EXPECTED_BACKEND_SHA);
 
   const ads = await request.get("/ads.txt", { headers: { "cache-control": "no-cache" } });
   expect(ads.status()).toBe(200);
