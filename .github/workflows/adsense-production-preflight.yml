@@ -31,6 +31,8 @@ jobs:
       AION_REQUIRE_ADSENSE_SCRIPT: "true"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Resolve expected SHA
         id: release
@@ -48,8 +50,16 @@ jobs:
             echo "Invalid expected SHA: $expected" >&2
             exit 1
           fi
+          backend_expected="$(git log -1 --format=%H -- . ':(exclude).github/**' ':(exclude)frontend/tests/**')"
+          backend_expected="${backend_expected,,}"
+          if ! [[ "$backend_expected" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Unable to resolve backend runtime SHA: $backend_expected" >&2
+            exit 1
+          fi
           echo "expected_sha=$expected" >> "$GITHUB_OUTPUT"
+          echo "backend_expected_sha=$backend_expected" >> "$GITHUB_OUTPUT"
           echo "AION_EXPECTED_SHA=$expected" >> "$GITHUB_ENV"
+          echo "AION_EXPECTED_BACKEND_SHA=$backend_expected" >> "$GITHUB_ENV"
 
       - name: Wait for Hostinger frontend to serve expected release
         shell: bash
@@ -76,8 +86,8 @@ jobs:
             served="$(printf '%s' "$body" | jq -r '.release_sha // empty' 2>/dev/null || true)"
             ready="$(printf '%s' "$body" | jq -r '.status // empty' 2>/dev/null || true)"
             marker="$(printf '%s' "$body" | jq -r '.coordination_dispatch_retry // false' 2>/dev/null || true)"
-            echo "backend attempt=$attempt status=${ready:-unavailable} marker=$marker served_sha=${served:-unavailable} expected=$AION_EXPECTED_SHA"
-            if [ "$ready" = "ready" ] && [ "$marker" = "true" ] && [ "$served" = "$AION_EXPECTED_SHA" ]; then
+            echo "backend attempt=$attempt status=${ready:-unavailable} marker=$marker served_sha=${served:-unavailable} expected=$AION_EXPECTED_BACKEND_SHA"
+            if [ "$ready" = "ready" ] && [ "$marker" = "true" ] && [ "$served" = "$AION_EXPECTED_BACKEND_SHA" ]; then
               exit 0
             fi
             sleep 20
