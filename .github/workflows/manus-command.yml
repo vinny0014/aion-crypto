@@ -1,33 +1,13 @@
-name: Manus command bridge
+name: Retired - manus-command
 
+# Manus integration revoked by the owner on 2026-10-15.
+# No network calls, secrets, dispatches or schedules are permitted here.
 on:
   workflow_dispatch:
-    inputs:
-      command:
-        description: Single command to send to the persistent Manus agent
-        required: true
-        type: string
-
-permissions:
-  contents: read
-
-concurrency:
-  group: manus-command-bridge
-  cancel-in-progress: false
-
+permissions: {}
 jobs:
-  send:
+  retired:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
-      - name: Send protected command
-        env:
-          MANUS_COMMAND: ${{ inputs.command }}
-          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
-        run: |
-          payload="$(jq -n --arg command "$MANUS_COMMAND" '{command: $command}')"
-          curl --fail-with-body --silent --show-error \
-            --max-time 35 \
-            -H "Content-Type: application/json" \
-            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
-            --data "$payload" \
-            https://aion-crypto-api.onrender.com/internal/manus/send
+      - run: echo "Manus integration disabled by owner"
