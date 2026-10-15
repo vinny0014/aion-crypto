@@ -1,45 +1,13 @@
-name: Recover AION Render bridge (manual)
+name: Retired - recover-aion-render-bridge-once
 
+# Manus integration revoked by the owner on 2026-10-15.
+# No network calls, secrets, dispatches or schedules are permitted here.
 on:
   workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: recover-aion-render-bridge
-  cancel-in-progress: false
-
+permissions: {}
 jobs:
-  recover:
+  retired:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - name: Stop when retry-safe backend is already live
-        id: readiness
-        run: |
-          if curl --fail --silent --show-error --max-time 20 \
-            https://aion-crypto-api.onrender.com/health/ready \
-            | jq -e '.status == "ready" and .coordination_dispatch_retry == true' >/dev/null; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Retry-safe Render backend is already live"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Ask Manus to publish the retry-safe backend
-        if: steps.readiness.outputs.ready != 'true'
-        env:
-          SCHEDULER_TOKEN: ${{ secrets.AION_SCHEDULER_TOKEN }}
-        run: |
-          test -n "$SCHEDULER_TOKEN"
-          command="AION BRIDGE RECOVERY — MANUAL. First verify that Render has a valid MANUS_API_KEY. Then deploy the current codex/aion-crypto-production-review branch for the aion-crypto-api service, wait for /health/ready to return status=ready and coordination_dispatch_retry=true, and record evidence in issues #35 and #38. Do not change content, AdSense, Auto Ads, payments, or cost. Do not request AdSense review in this recovery task."
-          payload="$(jq -n --arg command "$command" '{command:$command}')"
-          # No automatic retries: an authentication failure must not create
-          # repeated Manus calls or consume credits.
-          curl --fail-with-body --silent --show-error \
-            --max-time 40 \
-            -H "Content-Type: application/json" \
-            -H "X-Scheduler-Token: $SCHEDULER_TOKEN" \
-            --data "$payload" \
-            https://aion-crypto-api.onrender.com/internal/manus/send
+      - run: echo "Manus integration disabled by owner"
